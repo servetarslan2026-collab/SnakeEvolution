@@ -83,6 +83,25 @@ G.Save = {
     this.write();
   },
 
+  export() {
+    return JSON.stringify(this.data, null, 2);
+  },
+
+  import(json) {
+    try {
+      const data = JSON.parse(json);
+      if (data && data.version) {
+        this.data = data;
+        this.write();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.warn('Import failed:', e);
+      return false;
+    }
+  },
+
   reset() {
     localStorage.removeItem(this.KEY);
     location.reload();

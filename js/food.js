@@ -33,9 +33,19 @@ G.Food = {
     if (this.items.length > 0) {
       const lastType = this.items[this.items.length - 1].type;
       if (lastType === type.type && type.w < 10) {
-        // Aynı nadir yem tekrar çıkmasın
-        const commonTypes = types.filter(t => t.w >= 10);
-        if (commonTypes.length > 0) type = commonTypes[G.Utils.rndInt(0, commonTypes.length - 1)];
+        // Aynı nadir yem tekrar çıkmasın - farklı tür seç
+        const differentTypes = types.filter(t => t.type !== lastType);
+        if (differentTypes.length > 0) {
+          type = differentTypes[G.Utils.rndInt(0, differentTypes.length - 1)];
+        }
+      }
+    }
+
+    // Her 3 yemde bir nadir yem garantisi
+    if (this.items.length % 3 === 0) {
+      const rareTypes = types.filter(t => t.w <= 5);
+      if (rareTypes.length > 0 && Math.random() < 0.3) {
+        type = rareTypes[G.Utils.rndInt(0, rareTypes.length - 1)];
       }
     }
 
