@@ -69,21 +69,72 @@ G.Effects = {
    * Boss intro efekti
    */
   bossIntro() {
-    this.flash('#ff0000', 0.3);
-    this.shake(8, 0.5);
-    this.setZoom(1.1, 2);
-    this.chromatic(3, 0.5);
-    setTimeout(() => this.setZoom(1, 2), 500);
+    this.flash('#ff0000', 0.5);
+    this.shake(12, 0.8);
+    this.setZoom(1.15, 2);
+    this.chromatic(5, 0.8);
+    this.setVignette(0.7, 2);
+    setTimeout(() => {
+      this.setZoom(1, 2);
+      this.setVignette(0, 3);
+    }, 800);
+    // Kırmızı parçacık patlaması
+    if (G.Particles) {
+      const W = G.Config.CANVAS_WIDTH;
+      const H = G.Config.CANVAS_HEIGHT;
+      for (let i = 0; i < 40; i++) {
+        const angle = (Math.PI * 2 * i) / 40;
+        G.Particles.emit({
+          x: W / 2,
+          y: H / 2,
+          vx: Math.cos(angle) * (100 + Math.random() * 100),
+          vy: Math.sin(angle) * (100 + Math.random() * 100),
+          life: 0.8 + Math.random() * 0.5,
+          size: 3 + Math.random() * 4,
+          endSize: 0,
+          color: '#ff0044',
+          alpha: 1,
+          endAlpha: 0,
+          friction: 0.95,
+          shape: 'dot'
+        });
+      }
+      G.Particles.ring(W / 2, H / 2, '#ff0044', 120);
+    }
   },
 
   /**
    * Level up efekti
    */
   levelUp() {
-    this.flash('#ffaa00', 0.2);
-    this.shake(3, 0.2);
-    this.setZoom(1.05, 4);
-    setTimeout(() => this.setZoom(1, 4), 200);
+    this.flash('#ffaa00', 0.3);
+    this.shake(5, 0.3);
+    this.setZoom(1.08, 3);
+    setTimeout(() => this.setZoom(1, 3), 300);
+    // Altın parçacık yağmuru
+    if (G.Particles) {
+      const W = G.Config.CANVAS_WIDTH;
+      const H = G.Config.CANVAS_HEIGHT;
+      for (let i = 0; i < 20; i++) {
+        G.Particles.emit({
+          x: W / 2 + (Math.random() - 0.5) * 200,
+          y: H / 2,
+          vx: (Math.random() - 0.5) * 100,
+          vy: -50 - Math.random() * 100,
+          life: 0.8 + Math.random() * 0.5,
+          size: 2 + Math.random() * 3,
+          endSize: 0,
+          color: '#ffaa00',
+          alpha: 1,
+          endAlpha: 0,
+          gravity: 100,
+          friction: 0.98,
+          shape: 'star'
+        });
+      }
+      // Halka efekti
+      G.Particles.ring(W / 2, H / 2, '#ffaa00', 80);
+    }
   },
 
   /**

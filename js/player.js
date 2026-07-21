@@ -511,22 +511,62 @@ G.Player = {
    */
   die(source) {
     this._alive = false;
-    G.Effects.death();
-
     const head = this.getHead();
     const gs = G.Config.GRID_SIZE;
+    const skin = G.Skin.getSkin(this._skinId);
 
-    // Parçalanma efekti
-    for (const seg of this._segments) {
-      G.Particles.burst(seg.x * gs + gs / 2, seg.y * gs + gs / 2, '#00ffcc', 5);
+    // Dramatik ölüm efekti
+    G.Effects.death();
+    G.Effects.shake(15, 0.6);
+    G.Effects.flash('#ff0044', 0.4);
+    G.Effects.chromatic(6, 0.6);
+
+    // Her segment için parçalanma (daha fazla parçacık)
+    for (let i = 0; i < this._segments.length; i++) {
+      const seg = this._segments[i];
+      const sx = seg.x * gs + gs / 2;
+      const sy = seg.y * gs + gs / 2;
+      const isHead = i === 0;
+      const count = isHead ? 25 : 10;
+      const color = isHead ? skin.glow : skin.bodyColor;
+
+      // Gecikmeli parçacık patlaması
+      setTimeout(() => {
+        G.Particles.burst(sx, sy, color, count);
+        if (isHead) {
+          G.Particles.ring(sx, sy, '#ffffff', 50);
+          G.Particles.rainbowBurst(sx, sy, 15);
+        }
+      }, i * 30);
+    }
+
+    // Ekran çapında parçacık yağmuru
+    for (let i = 0; i < 30; i++) {
+      setTimeout(() => {
+        G.Particles.emit({
+          x: Math.random() * G.Config.CANVAS_WIDTH,
+          y: -10,
+          vx: (Math.random() - 0.5) * 50,
+          vy: 100 + Math.random() * 200,
+          life: 1 + Math.random(),
+          size: 2 + Math.random() * 3,
+          endSize: 0,
+          color: skin.glow,
+          alpha: 0.7,
+          endAlpha: 0,
+          gravity: 200,
+          friction: 0.99,
+          shape: 'dot'
+        });
+      }, i * 20);
     }
 
     G.Audio.play('die');
 
-    // Game over
-    if (G.Game) {
-      G.Game.onPlayerDeath(source);
-    }
+    // Game over (gecikmeli, animasyon bitsin)
+    setTimeout(() => {
+      if (G.Game) G.Game.onPlayerDeath(source);
+    }, 800);
   },
 
   /**

@@ -58,51 +58,88 @@ G.UI = {
     const H = G.Config.CANVAS_HEIGHT;
     const now = Date.now();
 
-    // Başlık
+    // Başlık (animasyonlu glow)
     ctx.save();
+    const titleGlow = 15 + Math.sin(now / 800) * 8;
     if (G.Save.get('settings.glow') !== false) {
       ctx.shadowColor = '#00ffcc';
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = titleGlow;
     }
     ctx.fillStyle = '#00ffcc';
-    ctx.font = 'bold 48px "Segoe UI", Arial, sans-serif';
+    ctx.font = "900 46px 'Orbitron', monospace";
     ctx.textAlign = 'center';
-    // letterSpacing not widely supported on canvas, removed
-    ctx.fillText('SNAKE EVOLUTION', W / 2, 120);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('SNAKE', W / 2, 90);
+    ctx.font = "700 32px 'Orbitron', monospace";
+    ctx.fillStyle = '#ff2d95';
+    ctx.shadowColor = '#ff2d95';
+    ctx.fillText('EVOLUTION', W / 2, 130);
     ctx.restore();
 
-    // Neon çizgi
-    ctx.strokeStyle = '#00ffcc44';
-    ctx.lineWidth = 2;
+    // Neon çizgi (gradient)
+    const lineGrad = ctx.createLinearGradient(W/2 - 180, 0, W/2 + 180, 0);
+    lineGrad.addColorStop(0, '#00ffcc00');
+    lineGrad.addColorStop(0.3, '#00ffcc88');
+    lineGrad.addColorStop(0.5, '#00ffcc');
+    lineGrad.addColorStop(0.7, '#00ffcc88');
+    lineGrad.addColorStop(1, '#00ffcc00');
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(W / 2 - 200, 140);
-    ctx.lineTo(W / 2 + 200, 140);
+    ctx.moveTo(W / 2 - 180, 150);
+    ctx.lineTo(W / 2 + 180, 150);
     ctx.stroke();
 
-    // Butonlar
+    // Alt başlık
+    ctx.fillStyle = '#55667788';
+    ctx.font = "12px 'Share Tech Mono', monospace";
+    ctx.textAlign = 'center';
+    ctx.fillText('A ROGUELIKE SNAKE EXPERIENCE', W / 2, 165);
+
+    // Butonlar (profesyonel)
     const buttons = ['PLAY', 'HOW TO PLAY', 'UPGRADES', 'STATISTICS', 'SETTINGS', 'CREDITS'];
+    const btnIcons = ['▶', '?', '↑', '📊', '⚙', 'ℹ'];
     const startY = 200;
-    const spacing = 50;
+    const spacing = 46;
+    const btnW = 240;
+    const btnH = 36;
 
     for (let i = 0; i < buttons.length; i++) {
       const y = startY + i * spacing;
       const selected = i === selectedIdx;
+      const bx = W / 2 - btnW / 2;
 
       ctx.save();
 
-      // Buton arka planı
+      // Buton arka planı (gradient)
       if (selected) {
-        ctx.fillStyle = '#00ffcc22';
-        ctx.fillRect(W / 2 - 150, y - 18, 300, 36);
+        const selGrad = ctx.createLinearGradient(bx, y - btnH/2, bx, y + btnH/2);
+        selGrad.addColorStop(0, '#00ffcc18');
+        selGrad.addColorStop(1, '#00ffcc08');
+        ctx.fillStyle = selGrad;
+        this._roundRect(ctx, bx, y - btnH/2, btnW, btnH, 6);
+        ctx.fill();
+
+        // Sol vurgu çizgisi
+        ctx.fillStyle = '#00ffcc';
+        ctx.fillRect(bx, y - btnH/2 + 4, 2, btnH - 8);
+
+        // Glow
         if (G.Save.get('settings.glow') !== false) {
           ctx.shadowColor = '#00ffcc';
           ctx.shadowBlur = 10;
         }
       }
 
+      // Buton kenarlığı
+      ctx.strokeStyle = selected ? '#00ffcc44' : '#ffffff11';
+      ctx.lineWidth = 1;
+      this._roundRect(ctx, bx, y - btnH/2, btnW, btnH, 6);
+      ctx.stroke();
+
       // Buton yazısı
-      ctx.fillStyle = selected ? '#00ffcc' : '#888899';
-      ctx.font = `${selected ? 'bold ' : ''}20px "Segoe UI", Arial, sans-serif`;
+      ctx.fillStyle = selected ? '#00ffcc' : '#667788';
+      ctx.font = (selected ? "bold " : "") + "16px 'Rajdhani', sans-serif";
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(buttons[i], W / 2, y);
@@ -362,49 +399,74 @@ G.UI = {
 
       ctx.save();
 
-      // Kart arka planı
-      ctx.fillStyle = selected ? '#1a1a3a' : '#0a0a1a';
-      this._roundRect(ctx, x, y, cardW, cardH, 8);
+      // Kart arka planı (gradient)
+      const cardGrad = ctx.createLinearGradient(x, y, x, y + cardH);
+      cardGrad.addColorStop(0, selected ? '#1a1a3a' : '#0e0e1e');
+      cardGrad.addColorStop(1, selected ? '#0a0a2a' : '#060612');
+      ctx.fillStyle = cardGrad;
+      this._roundRect(ctx, x, y, cardW, cardH, 10);
       ctx.fill();
 
-      // Border
-      ctx.strokeStyle = rarityColor.main;
-      ctx.lineWidth = selected ? 3 : 1;
-      this._roundRect(ctx, x, y, cardW, cardH, 8);
+      // Border (gradient)
+      const borderGrad = ctx.createLinearGradient(x, y, x, y + cardH);
+      borderGrad.addColorStop(0, rarityColor.main);
+      borderGrad.addColorStop(1, rarityColor.main + '44');
+      ctx.strokeStyle = borderGrad;
+      ctx.lineWidth = selected ? 2.5 : 1;
+      this._roundRect(ctx, x, y, cardW, cardH, 10);
       ctx.stroke();
 
       // Glow
       if (selected && G.Save.get('settings.glow') !== false) {
         ctx.shadowColor = rarityColor.main;
-        ctx.shadowBlur = 15;
-        ctx.strokeStyle = rarityColor.main;
-        ctx.lineWidth = 2;
-        this._roundRect(ctx, x, y, cardW, cardH, 8);
+        ctx.shadowBlur = 20;
+        ctx.strokeStyle = rarityColor.main + '88';
+        ctx.lineWidth = 1.5;
+        this._roundRect(ctx, x, y, cardW, cardH, 10);
         ctx.stroke();
+        ctx.shadowBlur = 0;
       }
 
-      // İkon
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '40px Arial';
+      // Rarity band (üst)
+      ctx.fillStyle = rarityColor.main + '22';
+      this._roundRect(ctx, x, y, cardW, 30, 10);
+      ctx.fill();
+      ctx.fillStyle = rarityColor.main + '44';
+      ctx.fillRect(x, y + 20, cardW, 10);
+
+      // Rarity yazısı
+      ctx.fillStyle = rarityColor.main;
+      ctx.font = "bold 10px 'Orbitron', monospace";
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(choice.icon || '⬆', x + cardW / 2, y + 50);
+      ctx.fillText(choice.rarity.toUpperCase(), x + cardW / 2, y + 15);
 
-      // İsim
+      // İkon (büyük, ortalanmış)
+      ctx.font = '44px Arial';
+      ctx.fillText(choice.icon || '⬆', x + cardW / 2, y + 65);
+
+      // İsim (Orbitron)
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 16px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(choice.name, x + cardW / 2, y + 95);
+      ctx.font = "bold 15px 'Orbitron', monospace";
+      ctx.fillText(choice.name, x + cardW / 2, y + 105);
 
-      // Açıklama
-      ctx.fillStyle = '#aaaacc';
-      ctx.font = '12px "Segoe UI", Arial, sans-serif';
-      // Uzun açıklamayı satırlara böl
+      // Ayırıcı çizgi
+      ctx.strokeStyle = rarityColor.main + '44';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x + 20, y + 120);
+      ctx.lineTo(x + cardW - 20, y + 120);
+      ctx.stroke();
+
+      // Açıklama (Rajdhani)
+      ctx.fillStyle = '#b0b0cc';
+      ctx.font = "13px 'Rajdhani', sans-serif";
       const words = choice.desc.split(' ');
       let line = '';
-      let lineY = y + 125;
+      let lineY = y + 140;
       for (const word of words) {
         const test = line + (line ? ' ' : '') + word;
-        if (ctx.measureText(test).width > cardW - 20) {
+        if (ctx.measureText(test).width > cardW - 24) {
           ctx.fillText(line, x + cardW / 2, lineY);
           line = word;
           lineY += 16;
@@ -414,15 +476,10 @@ G.UI = {
       }
       if (line) ctx.fillText(line, x + cardW / 2, lineY);
 
-      // Rarity
-      ctx.fillStyle = rarityColor.main;
-      ctx.font = 'bold 11px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(choice.rarity.toUpperCase(), x + cardW / 2, y + cardH - 20);
-
-      // Tuş
-      ctx.fillStyle = '#666677';
-      ctx.font = '14px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(`[${i + 1}]`, x + cardW / 2, y + cardH - 5);
+      // Tuş göstergesi
+      ctx.fillStyle = selected ? '#ffffff' : '#555566';
+      ctx.font = "bold 14px 'Share Tech Mono', monospace";
+      ctx.fillText(`[${i + 1}]`, x + cardW / 2, y + cardH - 12);
 
       ctx.restore();
     }
@@ -442,68 +499,96 @@ G.UI = {
     const H = G.Config.CANVAS_HEIGHT;
     const now = Date.now();
 
-    // Overlay
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    // Overlay (gradient)
+    const overlay = ctx.createRadialGradient(W/2, H/3, 0, W/2, H/2, H);
+    overlay.addColorStop(0, 'rgba(20,0,0,0.85)');
+    overlay.addColorStop(1, 'rgba(0,0,0,0.95)');
+    ctx.fillStyle = overlay;
     ctx.fillRect(0, 0, W, H);
 
-    // Game Over başlığı
+    // Game Over başlığı (animasyonlu)
     ctx.save();
+    const titlePulse = 18 + Math.sin(now / 600) * 8;
     if (G.Save.get('settings.glow') !== false) {
       ctx.shadowColor = '#ff0044';
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = titlePulse;
     }
     ctx.fillStyle = '#ff0044';
-    ctx.font = 'bold 48px "Segoe UI", Arial, sans-serif';
+    ctx.font = "900 44px 'Orbitron', monospace";
     ctx.textAlign = 'center';
-    ctx.fillText('GAME OVER', W / 2, 120);
+    ctx.textBaseline = 'middle';
+    ctx.fillText('GAME', W / 2, 90);
+    ctx.fillStyle = '#ff2d66';
+    ctx.fillText('OVER', W / 2, 135);
     ctx.restore();
 
-    // Neon çizgi
-    ctx.strokeStyle = '#ff004444';
-    ctx.lineWidth = 2;
+    // Neon çizgi (gradient)
+    const lineGrad = ctx.createLinearGradient(W/2 - 150, 0, W/2 + 150, 0);
+    lineGrad.addColorStop(0, '#ff004400');
+    lineGrad.addColorStop(0.3, '#ff004488');
+    lineGrad.addColorStop(0.5, '#ff0044');
+    lineGrad.addColorStop(0.7, '#ff004488');
+    lineGrad.addColorStop(1, '#ff004400');
+    ctx.strokeStyle = lineGrad;
+    ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(W / 2 - 150, 140);
-    ctx.lineTo(W / 2 + 150, 140);
+    ctx.moveTo(W / 2 - 150, 155);
+    ctx.lineTo(W / 2 + 150, 155);
     ctx.stroke();
 
-    // İstatistikler
+    // İstatistikler (profesyonel)
     if (stats) {
       const items = [
-        { label: 'Score', value: G.Utils.formatNumber(stats.score), color: '#00ffcc' },
-        { label: 'Time', value: G.Utils.formatTime(stats.time), color: '#888899' },
-        { label: 'Food', value: stats.food, color: '#ffaa00' },
-        { label: 'Best Combo', value: `x${stats.combo}`, color: '#ffaa00' },
-        { label: 'Killed by', value: stats.killedBy || 'Unknown', color: '#ff4444' }
+        { label: 'SCORE', value: G.Utils.formatNumber(stats.score), color: '#00ffcc' },
+        { label: 'TIME', value: G.Utils.formatTime(stats.time), color: '#888899' },
+        { label: 'FOOD', value: stats.food, color: '#ffaa00' },
+        { label: 'COMBO', value: `x${stats.combo}`, color: '#ffaa00' },
+        { label: 'KILLED BY', value: stats.killedBy || 'Unknown', color: '#ff4444' }
       ];
 
-      let y = 180;
+      let y = 185;
       for (const item of items) {
-        ctx.fillStyle = '#888899';
-        ctx.font = '16px "Segoe UI", Arial, sans-serif';
+        // Label
+        ctx.fillStyle = '#556677';
+        ctx.font = "11px 'Orbitron', monospace";
         ctx.textAlign = 'right';
-        ctx.fillText(item.label + ':', W / 2 - 10, y);
+        ctx.fillText(item.label, W / 2 - 15, y);
+        // Value
         ctx.fillStyle = item.color;
-        ctx.font = 'bold 16px monospace';
+        ctx.font = "bold 16px 'Share Tech Mono', monospace";
         ctx.textAlign = 'left';
-        ctx.fillText(String(item.value), W / 2 + 10, y);
-        y += 30;
+        ctx.fillText(String(item.value), W / 2 + 15, y);
+        y += 28;
       }
 
-      // Kazanılanlar
-      y += 20;
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 18px "Segoe UI", Arial, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('Rewards', W / 2, y);
-      y += 30;
+      // Ayırıcı çizgi
+      ctx.strokeStyle = '#ffffff11';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(W/2 - 120, y + 5);
+      ctx.lineTo(W/2 + 120, y + 5);
+      ctx.stroke();
 
-      ctx.fillStyle = '#ffaa00';
-      ctx.font = '16px "Segoe UI", Arial, sans-serif';
-      ctx.fillText(`+${stats.xpEarned} XP    +${stats.coinsEarned} Coin${stats.coinsEarned !== 1 ? 's' : ''}`, W / 2, y);
+      // Kazanılanlar (ödüller)
+      y += 25;
+      ctx.fillStyle = '#ffffff';
+      ctx.font = "bold 14px 'Orbitron', monospace";
+      ctx.textAlign = 'center';
+      ctx.fillText('REWARDS', W / 2, y);
+      y += 25;
+
+      // XP
+      ctx.fillStyle = '#00ffcc';
+      ctx.font = "bold 18px 'Share Tech Mono', monospace";
+      ctx.fillText(`+${stats.xpEarned} XP`, W / 2 - 60, y);
+      // Coin
+      ctx.fillStyle = '#ffcc00';
+      ctx.fillText(`+${stats.coinsEarned} COIN`, W / 2 + 60, y);
+      // Gem
       if (stats.gemsEarned > 0) {
         y += 25;
         ctx.fillStyle = '#aa44ff';
-        ctx.fillText(`+${stats.gemsEarned} Gem${stats.gemsEarned !== 1 ? 's' : ''}`, W / 2, y);
+        ctx.fillText(`+${stats.gemsEarned} GEM`, W / 2, y);
       }
     }
 

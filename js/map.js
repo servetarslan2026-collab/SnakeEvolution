@@ -305,103 +305,193 @@ G.Map = {
 
         switch (tile) {
           case TILE.WALL:
-            ctx.fillStyle = biome.wall;
+            // Duvar (gradient + doku)
+            const wg = ctx.createLinearGradient(px, py, px + gs, py + gs);
+            wg.addColorStop(0, biome.wall);
+            wg.addColorStop(1, biome.wallGlow);
+            ctx.fillStyle = wg;
             ctx.fillRect(px, py, gs, gs);
+            // Tuğla deseni
+            ctx.strokeStyle = biome.wallGlow + '44';
+            ctx.lineWidth = 0.5;
+            ctx.strokeRect(px + 1, py + 1, gs/2 - 1, gs/2 - 1);
+            ctx.strokeRect(px + gs/2, py + 1, gs/2 - 1, gs/2 - 1);
+            ctx.strokeRect(px + 1, py + gs/2, gs - 2, gs/2 - 1);
             // Neon kenarlık
-            ctx.strokeStyle = biome.wallGlow;
+            ctx.strokeStyle = biome.wallGlow + '88';
             ctx.lineWidth = 1;
             ctx.strokeRect(px + 0.5, py + 0.5, gs - 1, gs - 1);
             break;
 
           case TILE.ROCK:
-            ctx.fillStyle = '#2a2a3a';
+            // Kaya (gradient + gölge)
+            const rg = ctx.createRadialGradient(px + gs/2 - 2, py + gs/2 - 2, 1, px + gs/2, py + gs/2, gs/2);
+            rg.addColorStop(0, '#4a4a5a');
+            rg.addColorStop(1, '#2a2a3a');
+            ctx.fillStyle = rg;
             ctx.fillRect(px + 2, py + 2, gs - 4, gs - 4);
-            ctx.fillStyle = '#3a3a4a';
-            ctx.fillRect(px + 3, py + 3, gs - 6, gs - 6);
+            // Highlight
+            ctx.fillStyle = 'rgba(255,255,255,0.08)';
+            ctx.fillRect(px + 3, py + 3, gs/2 - 2, gs/2 - 2);
+            // Kenarlık
+            ctx.strokeStyle = '#5a5a6a44';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 2, py + 2, gs - 4, gs - 4);
             break;
 
           case TILE.LAVA:
-            ctx.fillStyle = biome.lava;
+            // Lava (animasyonlu gradient)
+            const t = Date.now() / 500;
+            const lg = ctx.createRadialGradient(px + gs/2 + Math.sin(t) * 3, py + gs/2 + Math.cos(t) * 3, 0, px + gs/2, py + gs/2, gs/2);
+            lg.addColorStop(0, '#ffaa00');
+            lg.addColorStop(0.4, biome.lava);
+            lg.addColorStop(1, '#881100');
+            ctx.fillStyle = lg;
             ctx.fillRect(px, py, gs, gs);
-            // Parıltı
-            ctx.fillStyle = '#ff880044';
-            ctx.fillRect(px + 4, py + 4, gs - 8, gs - 8);
-            break;
-
-          case TILE.ICE:
-            ctx.fillStyle = biome.ice + '44';
-            ctx.fillRect(px, py, gs, gs);
-            ctx.strokeStyle = biome.ice + '88';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(px + 1, py + 1, gs - 2, gs - 2);
-            // Kristal deseni
+            // Kabarcıklar
+            ctx.fillStyle = '#ffcc4444';
             ctx.beginPath();
-            ctx.moveTo(px + gs / 2, py + 2);
-            ctx.lineTo(px + gs - 2, py + gs / 2);
-            ctx.lineTo(px + gs / 2, py + gs - 2);
-            ctx.lineTo(px + 2, py + gs / 2);
-            ctx.closePath();
-            ctx.strokeStyle = biome.ice + '66';
-            ctx.stroke();
-            break;
-
-          case TILE.BUSH:
-            ctx.fillStyle = biome.bush;
-            ctx.fillRect(px + 2, py + 2, gs - 4, gs - 4);
-            ctx.fillStyle = '#00550088';
+            ctx.arc(px + gs*0.3 + Math.sin(t*1.3)*2, py + gs*0.4 + Math.cos(t)*2, 2, 0, Math.PI*2);
+            ctx.fill();
             ctx.beginPath();
-            ctx.arc(px + gs / 2, py + gs / 2, gs / 3, 0, Math.PI * 2);
+            ctx.arc(px + gs*0.7 + Math.cos(t*0.9)*2, py + gs*0.6 + Math.sin(t*1.1)*2, 1.5, 0, Math.PI*2);
             ctx.fill();
             break;
 
-          case TILE.FOG:
-            ctx.fillStyle = biome.fog + 'aa';
+          case TILE.ICE:
+            // Buz (gradient + kristal deseni)
+            const ig = ctx.createLinearGradient(px, py, px + gs, py + gs);
+            ig.addColorStop(0, biome.ice + '22');
+            ig.addColorStop(0.5, biome.ice + '44');
+            ig.addColorStop(1, biome.ice + '22');
+            ctx.fillStyle = ig;
             ctx.fillRect(px, py, gs, gs);
+            // Kristal deseni (elmas)
+            ctx.strokeStyle = biome.ice + '66';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(px + gs/2, py + 2);
+            ctx.lineTo(px + gs - 2, py + gs/2);
+            ctx.lineTo(px + gs/2, py + gs - 2);
+            ctx.lineTo(px + 2, py + gs/2);
+            ctx.closePath();
+            ctx.stroke();
+            // İç parıltı
+            ctx.fillStyle = biome.ice + '22';
+            ctx.beginPath();
+            ctx.arc(px + gs/2, py + gs/2, gs/4, 0, Math.PI*2);
+            ctx.fill();
+            // Kenarlık
+            ctx.strokeStyle = biome.ice + '44';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 0.5, py + 0.5, gs - 1, gs - 1);
+            break;
+
+          case TILE.BUSH:
+            // Çalı (yaprak deseni)
+            ctx.fillStyle = biome.bush;
+            ctx.fillRect(px + 1, py + 1, gs - 2, gs - 2);
+            // Yapraklar
+            ctx.fillStyle = '#00660044';
+            for (let li = 0; li < 4; li++) {
+              const lx = px + 4 + (li % 2) * (gs/2);
+              const ly = py + 4 + Math.floor(li/2) * (gs/2);
+              ctx.beginPath();
+              ctx.arc(lx, ly, gs/4, 0, Math.PI*2);
+              ctx.fill();
+            }
+            // Kenarlık
+            ctx.strokeStyle = biome.bush + '88';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(px + 1, py + 1, gs - 2, gs - 2);
+            break;
+
+          case TILE.FOG:
+            // Sis (animasyonlu bulut)
+            const ft = Date.now() / 1000;
+            ctx.fillStyle = biome.fog;
+            ctx.fillRect(px, py, gs, gs);
+            ctx.globalAlpha = 0.3 + Math.sin(ft + px * 0.1) * 0.1;
+            ctx.fillStyle = biome.fog;
+            ctx.beginPath();
+            ctx.arc(px + gs/2 + Math.sin(ft)*3, py + gs/2, gs/2, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1;
             break;
 
           case TILE.ELECTRIC:
+            // Elektrik (animasyonlu yıldırım)
             ctx.fillStyle = '#1a1a00';
             ctx.fillRect(px, py, gs, gs);
-            // Elektrik çizgisi
             ctx.strokeStyle = biome.electric;
-            ctx.lineWidth = 1;
+            ctx.lineWidth = 1.5;
             ctx.beginPath();
-            const t = Date.now() / 200;
-            ctx.moveTo(px, py + gs / 2);
-            for (let i = 0; i < 4; i++) {
-              const sx = px + (i + 0.5) * (gs / 4);
-              const sy = py + gs / 2 + Math.sin(t + i) * 4;
+            const et = Date.now() / 150;
+            ctx.moveTo(px, py + gs/2);
+            for (let i = 0; i < 5; i++) {
+              const sx = px + (i + 0.5) * (gs/5);
+              const sy = py + gs/2 + Math.sin(et + i * 2) * 5;
               ctx.lineTo(sx, sy);
             }
-            ctx.lineTo(px + gs, py + gs / 2);
+            ctx.lineTo(px + gs, py + gs/2);
+            ctx.stroke();
+            // Glow
+            ctx.strokeStyle = biome.electric + '44';
+            ctx.lineWidth = 4;
             ctx.stroke();
             break;
 
           case TILE.PORTAL:
-            ctx.fillStyle = biome.portal + '44';
+            // Portal (dönen halka + glow)
+            ctx.fillStyle = biome.portal + '22';
             ctx.fillRect(px, py, gs, gs);
-            // Dönen halka
-            ctx.strokeStyle = biome.portal;
+            const pt = Date.now() / 400;
+            // Dış halka
+            ctx.strokeStyle = biome.portal + '88';
             ctx.lineWidth = 2;
             ctx.beginPath();
-            const pt = Date.now() / 500;
-            ctx.arc(px + gs / 2, py + gs / 2, gs / 3, pt, pt + Math.PI * 1.5);
+            ctx.arc(px + gs/2, py + gs/2, gs/3, pt, pt + Math.PI * 1.5);
             ctx.stroke();
+            // İç halka
+            ctx.strokeStyle = biome.portal + '44';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.arc(px + gs/2, py + gs/2, gs/5, -pt, -pt + Math.PI);
+            ctx.stroke();
+            // Merkez glow
+            ctx.fillStyle = biome.portal + '33';
+            ctx.beginPath();
+            ctx.arc(px + gs/2, py + gs/2, gs/6, 0, Math.PI*2);
+            ctx.fill();
             break;
 
           case TILE.CRATE:
-            ctx.fillStyle = '#4a3a2a';
+            // Sandık (ahşap deseni)
+            const cg = ctx.createLinearGradient(px, py, px, py + gs);
+            cg.addColorStop(0, '#5a4a3a');
+            cg.addColorStop(0.5, '#4a3a2a');
+            cg.addColorStop(1, '#3a2a1a');
+            ctx.fillStyle = cg;
             ctx.fillRect(px + 2, py + 2, gs - 4, gs - 4);
+            // Ahşap çizgiler
+            ctx.strokeStyle = '#6a5a4a33';
+            ctx.lineWidth = 0.5;
+            for (let wi = 0; wi < 3; wi++) {
+              ctx.beginPath();
+              ctx.moveTo(px + 3, py + 4 + wi * (gs/3));
+              ctx.lineTo(px + gs - 3, py + 4 + wi * (gs/3));
+              ctx.stroke();
+            }
+            // Metal köşe
+            ctx.fillStyle = '#88888844';
+            ctx.fillRect(px + 2, py + 2, 4, 4);
+            ctx.fillRect(px + gs - 6, py + 2, 4, 4);
+            ctx.fillRect(px + 2, py + gs - 6, 4, 4);
+            ctx.fillRect(px + gs - 6, py + gs - 6, 4, 4);
+            // Kenarlık
             ctx.strokeStyle = '#6a5a4a';
             ctx.lineWidth = 1;
             ctx.strokeRect(px + 2, py + 2, gs - 4, gs - 4);
-            // X deseni
-            ctx.beginPath();
-            ctx.moveTo(px + 4, py + 4);
-            ctx.lineTo(px + gs - 4, py + gs - 4);
-            ctx.moveTo(px + gs - 4, py + 4);
-            ctx.lineTo(px + 4, py + gs - 4);
-            ctx.stroke();
             break;
         }
       }

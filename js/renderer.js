@@ -192,6 +192,15 @@ G.Renderer = {
 
     this._mainCtx.restore();
 
+    // Scanline efekti (CRT hissi)
+    this._mainCtx.save();
+    this._mainCtx.globalAlpha = 0.03;
+    for (let sy = 0; sy < H; sy += 3) {
+      this._mainCtx.fillStyle = '#000000';
+      this._mainCtx.fillRect(0, sy, W, 1);
+    }
+    this._mainCtx.restore();
+
     // FPS
     this._fpsCounter++;
     const now = performance.now();
@@ -204,11 +213,30 @@ G.Renderer = {
 
   _drawBackground(ctx, W, H) {
     const biome = G.Config.BIOMES[G.Game ? G.Game.currentBiome : 'neon_city'] || G.Config.BIOMES.neon_city;
-    // Arka plan rengi
-    ctx.fillStyle = biome.bg;
+    const now = Date.now();
+
+    // Arka plan rengi (radial gradient)
+    const bgGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W*0.7);
+    bgGrad.addColorStop(0, biome.bg);
+    bgGrad.addColorStop(1, '#000000');
+    ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, W, H);
 
-    // Grid çizgileri
+    // Floating parçacıklar (animasyonlu)
+    ctx.globalAlpha = 0.15;
+    const accent = biome.accent || '#00ffcc';
+    for (let i = 0; i < 20; i++) {
+      const px = (Math.sin(now / 3000 + i * 1.7) * 0.5 + 0.5) * W;
+      const py = (Math.cos(now / 4000 + i * 2.3) * 0.5 + 0.5) * H;
+      const psize = 1 + Math.sin(now / 2000 + i) * 0.5;
+      ctx.fillStyle = accent;
+      ctx.beginPath();
+      ctx.arc(px, py, psize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // Grid çizgileri (subtle glow)
     const gs = G.Config.GRID_SIZE;
     ctx.strokeStyle = biome.grid;
     ctx.lineWidth = 0.5;
@@ -225,9 +253,13 @@ G.Renderer = {
       ctx.stroke();
     }
 
-    // Her 5 tile'da bir belirgin çizgi
+    // Her 5 tile'da bir belirgin çizgi (glow efektli)
     ctx.strokeStyle = biome.gridAccent;
     ctx.lineWidth = 1;
+    if (G.Save.get('settings.glow') !== false) {
+      ctx.shadowColor = accent;
+      ctx.shadowBlur = 3;
+    }
     for (let x = 0; x <= W; x += gs * 5) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -240,6 +272,36 @@ G.Renderer = {
       ctx.lineTo(W, y);
       ctx.stroke();
     }
+    ctx.shadowBlur = 0;
+
+    // Köşe dekorasyonları (neon çizgiler)
+    const cornerLen = 40;
+    ctx.strokeStyle = accent + '33';
+    ctx.lineWidth = 1;
+    // Sol üst
+    ctx.beginPath();
+    ctx.moveTo(5, 5 + cornerLen);
+    ctx.lineTo(5, 5);
+    ctx.lineTo(5 + cornerLen, 5);
+    ctx.stroke();
+    // Sağ üst
+    ctx.beginPath();
+    ctx.moveTo(W - 5 - cornerLen, 5);
+    ctx.lineTo(W - 5, 5);
+    ctx.lineTo(W - 5, 5 + cornerLen);
+    ctx.stroke();
+    // Sol alt
+    ctx.beginPath();
+    ctx.moveTo(5, H - 5 - cornerLen);
+    ctx.lineTo(5, H - 5);
+    ctx.lineTo(5 + cornerLen, H - 5);
+    ctx.stroke();
+    // Sağ alt
+    ctx.beginPath();
+    ctx.moveTo(W - 5 - cornerLen, H - 5);
+    ctx.lineTo(W - 5, H - 5);
+    ctx.lineTo(W - 5, H - 5 - cornerLen);
+    ctx.stroke();
   },
 
   // --- Katman Erişim ---
