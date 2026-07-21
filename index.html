@@ -15,24 +15,224 @@ canvas{display:block}
 <canvas id="c"></canvas>
 <script>
 // =====================================================
-// SNAKE EVOLUTION v3 — Tüm Düzeltmeler
+// SNAKE EVOLUTION v4 — Complete Edition
 // =====================================================
 const canvas=document.getElementById('c');
 const ctx=canvas.getContext('2d',{alpha:false});
 const W=800,H=600,GS=20;
-const COLS=W/GS,ROWS=H/GS;
-const PI2=Math.PI*2;
+const COLS=W/GS,ROWS=H/GS,PI2=Math.PI*2;
 
 function resize(){
   const s=Math.min(innerWidth/W,innerHeight/H);
-  canvas.width=W*s|0; canvas.height=H*s|0;
-  canvas.style.width=W*s+'px'; canvas.style.height=H*s+'px';
+  canvas.width=W*s|0;canvas.height=H*s|0;
+  canvas.style.width=W*s+'px';canvas.style.height=H*s+'px';
   ctx.setTransform(s,0,0,s,0,0);
 }
-resize(); addEventListener('resize',resize);
+resize();addEventListener('resize',resize);
 
 // =====================================================
-// DURUM
+// SAVE SYSTEM (localStorage)
+// =====================================================
+const SAVE_KEY='snakeEvo_save';
+let saveData={version:1,coins:0,totalScore:0,totalGames:0,totalTime:0,totalFood:0,
+  highScore:0,achievements:[],unlockedSkins:['default'],equippedSkin:'default',
+  settings:{sound:0.7,music:0.5,shake:true,glow:true,particles:true}};
+
+function loadSave(){
+  try{const d=localStorage.getItem(SAVE_KEY);if(d){saveData=JSON.parse(d);}}
+  catch(e){} 
+}
+function writeSave(){
+  try{localStorage.setItem(SAVE_KEY,JSON.stringify(saveData));}catch(e){}
+}
+function resetSave(){
+  localStorage.removeItem(SAVE_KEY);
+  saveData={version:1,coins:0,totalScore:0,totalGames:0,totalTime:0,totalFood:0,
+    highScore:0,achievements:[],unlockedSkins:['default'],equippedSkin:'default',
+    settings:{sound:0.7,music:0.5,shake:true,glow:true,particles:true}};
+}
+loadSave();
+
+// =====================================================
+// BIOMES (6 renk paleti)
+// =====================================================
+const BIOMES=[
+  {name:'Neon City',bg:'#06060f',grid:'#0c0c1e',wall:'#14142e',wallG:'#1e1e48',accent:'#00ffd5',accent2:'#ff2d95'},
+  {name:'Frozen Lab',bg:'#040810',grid:'#0a1420',wall:'#0c1e3a',wallG:'#163058',accent:'#00c8ff',accent2:'#0066ff'},
+  {name:'Lava Core',bg:'#100404',grid:'#200a0a',wall:'#301212',wallG:'#4a1a1a',accent:'#ff4400',accent2:'#ffaa00'},
+  {name:'Cyber Forest',bg:'#040a04',grid:'#0a180a',wall:'#0a280a',wallG:'#1a481a',accent:'#44ff00',accent2:'#00ff88'},
+  {name:'Space Station',bg:'#04040a',grid:'#12121e',wall:'#18182a',wallG:'#282848',accent:'#aa00ff',accent2:'#ff00ff'},
+  {name:'Void',bg:'#020204',grid:'#06060e',wall:'#080814',wallG:'#14142a',accent:'#ff00aa',accent2:'#aa00ff'}
+];
+let currentBiome=0;
+
+// =====================================================
+// UPGRADES (50+)
+// =====================================================
+const ALL_UPGRADES=[
+  // Hareket (8)
+  {id:'speed',name:'Hız Artışı',desc:'+%20 hız',icon:'🏃',cat:'movement',rarity:'common'},
+  {id:'slow',name:'Kontrol',desc:'-%15 hız, daha iyi kontrol',icon:'🐢',cat:'movement',rarity:'common'},
+  {id:'dash',name:'Dash',desc:'SPACE ile atıl',icon:'💨',cat:'movement',rarity:'uncommon'},
+  {id:'teleport',name:'Teleport',desc:'Rastgele ışınlan',icon:'🌀',cat:'movement',rarity:'rare'},
+  {id:'ghost',name:'Ghost Mode',desc:'5 sn duvarlardan geç',icon:'👻',cat:'movement',rarity:'rare'},
+  {id:'turbo',name:'Turbo',desc:'3 sn +%50 hız',icon:'🚀',cat:'movement',rarity:'uncommon'},
+  {id:'phase',name:'Phase Shift',desc:'3 sn düşmanlardan geç',icon:'✨',cat:'movement',rarity:'epic'},
+  {id:'momentum',name:'Momentum',desc:'Durmadan hızlan',icon:'⚡',cat:'movement',rarity:'epic'},
+
+  // Savunma (7)
+  {id:'hp',name:'Extra Can',desc:'+1 max can',icon:'❤️',cat:'defense',rarity:'common'},
+  {id:'shield',name:'Kalkan',desc:'3 sn dokunulmaz',icon:'🛡️',cat:'defense',rarity:'uncommon'},
+  {id:'armor',name:'Zırh',desc:'Tüm hasar -1',icon:'🔰',cat:'defense',rarity:'rare'},
+  {id:'regen',name:'Yenilenme',desc:'10 sn de 1 can',icon:'💚',cat:'defense',rarity:'epic'},
+  {id:'heal',name:'Tam İyileşme',desc:'Canı doldur',icon:'💚',cat:'defense',rarity:'common'},
+  {id:'secondLife',name:'İkinci Hayat',desc:'Ölünce 1 kez diril',icon:'💖',cat:'defense',rarity:'legendary'},
+  {id:'blastGuard',name:'Patlama Kalkanı',desc:'Patlamalardan hasar almaz',icon:'💥',cat:'defense',rarity:'rare'},
+
+  // Yem (8)
+  {id:'magnet',name:'Mıknatıs',desc:'Yemleri çeker',icon:'🧲',cat:'food',rarity:'common'},
+  {id:'score2x',name:'2x Puan',desc:'Çift puan',icon:'💯',cat:'food',rarity:'uncommon'},
+  {id:'xp2x',name:'2x XP',desc:'Çift XP',icon:'📈',cat:'food',rarity:'uncommon'},
+  {id:'golden',name:'Altın Dokunuş',desc:'Altın elma +%20',icon:'🥇',cat:'food',rarity:'rare'},
+  {id:'heartFind',name:'Kalp Avcısı',desc:'Kalp +%15',icon:'💕',cat:'food',rarity:'rare'},
+  {id:'foodBoom',name:'Yem Patlaması',desc:'Yem yedince yakındakiler toplanır',icon:'💣',cat:'food',rarity:'epic'},
+  {id:'luckyDrop',name:'Şanslı Düşme',desc:'Coin +%30',icon:'🍀',cat:'food',rarity:'uncommon'},
+  {id:'critical',name:'Kritik Yem',desc:'%15 şansla 2x etki',icon:'🎯',cat:'food',rarity:'epic'},
+
+  // Kuyruk (8)
+  {id:'fireTail',name:'Ateş Kuyruk',desc:'Düşman hasar verir',icon:'🔥',cat:'tail',rarity:'uncommon'},
+  {id:'iceTail',name:'Buz Kuyruk',desc:'Düşman yavaşlar',icon:'❄️',cat:'tail',rarity:'uncommon'},
+  {id:'poisonTail',name:'Zehir Kuyruk',desc:'Düşman zehirler',icon:'☠️',cat:'tail',rarity:'rare'},
+  {id:'elecTail',name:'Elektrik Kuyruk',desc:'Düşman sersemletir',icon:'⚡',cat:'tail',rarity:'rare'},
+  {id:'longTail',name:'Uzun Kuyruk',desc:'+5 max uzunluk',icon:'📏',cat:'tail',rarity:'common'},
+  {id:'thickTail',name:'Kalın Kuyruk',desc:'2 tile genişlik',icon:'📐',cat:'tail',rarity:'epic'},
+  {id:'chainTail',name:'Zincir Kuyruk',desc:'Kuyruk arası zincir hasar',icon:'⛓️',cat:'tail',rarity:'legendary'},
+  {id:'explodingTail',name:'Patlayan Kuyruk',desc:'Kuyruk patlar',icon:'💥',cat:'tail',rarity:'epic'},
+
+  // Özel (8)
+  {id:'clone',name:'Klon Yılan',desc:'Otomatik yem toplar',icon:'🐍',cat:'special',rarity:'legendary'},
+  {id:'drone',name:'Mini Drone',desc:'Düşman hasar verir',icon:'🤖',cat:'special',rarity:'epic'},
+  {id:'autoCollect',name:'Otomatik Toplama',desc:'3 sn de 1 yem',icon:'🧲',cat:'special',rarity:'rare'},
+  {id:'timeFreeze',name:'Zaman Dondurma',desc:'5 sn her şey durur',icon:'⏸️',cat:'special',rarity:'legendary'},
+  {id:'chainCombo',name:'Zincir Combo',desc:'Combo penceresi +1 sn',icon:'🔗',cat:'special',rarity:'uncommon'},
+  {id:'lucky',name:'Şanslı',desc:'Tüm rastgele +%20',icon:'🍀',cat:'special',rarity:'rare'},
+  {id:'radar',name:'Radar',desc:'Yakındaki yem/düşman göster',icon:'📡',cat:'special',rarity:'uncommon'},
+  {id:'vortex',name:'Vortex',desc:'Sürekli yem çekme alanı',icon:'🌀',cat:'special',rarity:'legendary'}
+];
+
+// Rarity ağırlıkları
+const RARITY_W={common:50,uncommon:30,rare:15,epic:4,legendary:1};
+
+function pickUpgrades(count){
+  const result=[];
+  const used=new Set();
+  for(let i=0;i<count;i++){
+    let best=null,bestW=0;
+    for(const u of ALL_UPGRADES){
+      if(used.has(u.id))continue;
+      const w=RARITY_W[u.rarity]||10;
+      if(Math.random()*w>bestW){best=u;bestW=w;}
+    }
+    if(best){result.push(best);used.add(best.id);}
+  }
+  return result;
+}
+
+// =====================================================
+// BOSS TANIMLARI (6)
+// =====================================================
+const BOSS_TYPES=[
+  {name:'Dev Solucan',color:'#aa44ff',hp:20,attacks:['burrow','slam']},
+  {name:'Lazer Küp',color:'#0088ff',hp:30,attacks:['laser_spin','beam']},
+  {name:'Manyetik Çekirdek',color:'#00ffcc',hp:40,attacks:['pull','pulse']},
+  {name:'Elektrik Küresi',color:'#ffff00',hp:50,attacks:['ring','chain']},
+  {name:'AI Yılan',color:'#ff0044',hp:65,attacks:['mirror','clone']},
+  {name:'Void Lord',color:'#ff00aa',hp:80,attacks:['mixed','void']}
+];
+
+// =====================================================
+// DÜŞMAN TANIMLARI (6)
+// =====================================================
+const ENEMY_TYPES=[
+  {type:'bug',name:'Böcek',speed:2,hp:1,color:'#ff2244',ai:'wander'},
+  {type:'snake',name:'Zehirli Yılan',speed:3,hp:1,color:'#44ff22',ai:'chase'},
+  {type:'bomber',name:'Patlayan Top',speed:4,hp:1,color:'#ff8800',ai:'bomber'},
+  {type:'drone',name:'Lazer Drone',speed:0,hp:3,color:'#4488ff',ai:'turret'},
+  {type:'ghost',name:'Hayalet',speed:1.5,hp:999,color:'#aaaaff',ai:'ghost'},
+  {type:'chaser',name:'Takipçi Robot',speed:3,hp:2,color:'#ff4444',ai:'aggressive'}
+];
+
+// =====================================================
+// YEM TANIMLARI (11)
+// =====================================================
+const FOOD_TYPES=[
+  {type:'normal',color:'#ff2244',w:40,sc:1,len:1,xp:0,hp:0,icon:'🍎'},
+  {type:'golden',color:'#ffaa00',w:10,sc:5,len:2,xp:0,hp:0,icon:'⭐'},
+  {type:'crystal',color:'#aa44ff',w:10,sc:0,len:0,xp:25,hp:0,icon:'💎'},
+  {type:'heart',color:'#ff44aa',w:10,sc:0,len:0,xp:0,hp:1,icon:'❤️'},
+  {type:'clock',color:'#4488ff',w:6,sc:0,len:0,xp:0,hp:0,icon:'⏱️',effect:'slow'},
+  {type:'bomb',color:'#ff6600',w:3,sc:0,len:0,xp:0,hp:0,icon:'💣',effect:'bomb'},
+  {type:'poison',color:'#44ff00',w:3,sc:0,len:-2,xp:0,hp:0,icon:'☠️'},
+  {type:'magnet',color:'#00ffcc',w:5,sc:0,len:0,xp:0,hp:0,icon:'🧲',effect:'magnet'},
+  {type:'lucky',color:'#ffffff',w:3,sc:0,len:0,xp:0,hp:0,icon:'🍀',effect:'lucky'},
+  {type:'star',color:'#ffffff',w:3,sc:0,len:0,xp:0,hp:0,icon:'✨',effect:'invincible'},
+  {type:'coin',color:'#ffcc00',w:7,sc:2,len:0,xp:0,hp:0,icon:'🪙',effect:'coin'}
+];
+
+// =====================================================
+// SKİNLER (20)
+// =====================================================
+const SKINS=[
+  {id:'default',name:'Default',head:'#00ffd5',body:'#00aa88',glow:'#00ffd5',unlock:null},
+  {id:'robot',name:'Robot',head:'#8888aa',body:'#555577',glow:'#8888ff',unlock:{coins:100}},
+  {id:'dragon',name:'Dragon',head:'#ff3300',body:'#cc2200',glow:'#ff4400',unlock:{achievement:'boss_hunter'}},
+  {id:'ghost',name:'Ghost',head:'#aaaaff',body:'#8888cc',glow:'#ccccff',unlock:{achievement:'ghost_rider'}},
+  {id:'fire',name:'Fire',head:'#ff4400',body:'#ff2200',glow:'#ff6600',unlock:{coins:200}},
+  {id:'ice',name:'Ice',head:'#00ccff',body:'#0088cc',glow:'#44ddff',unlock:{coins:150}},
+  {id:'cyber',name:'Cyber',head:'#00ff88',body:'#00cc66',glow:'#44ffaa',unlock:{coins:300}},
+  {id:'rainbow',name:'Rainbow',head:'#ff0000',body:'#00ff00',glow:'#0000ff',unlock:{achievement:'combo_god'},rainbow:true},
+  {id:'gold',name:'Gold',head:'#ffcc00',body:'#cc9900',glow:'#ffdd44',unlock:{achievement:'coin_master'}},
+  {id:'galaxy',name:'Galaxy',head:'#6600cc',body:'#4400aa',glow:'#8822ff',unlock:{coins:500}},
+  {id:'neon',name:'Neon',head:'#ff00ff',body:'#cc00cc',glow:'#ff44ff',unlock:{coins:250}},
+  {id:'matrix',name:'Matrix',head:'#00ff00',body:'#008800',glow:'#44ff44',unlock:{achievement:'speed_demon'}},
+  {id:'pixel',name:'Pixel',head:'#ff8844',body:'#cc6622',glow:'#ffaa66',unlock:{coins:150}},
+  {id:'ocean',name:'Ocean',head:'#0066ff',body:'#0044cc',glow:'#4488ff',unlock:{achievement:'survivor'}},
+  {id:'sunset',name:'Sunset',head:'#ff4466',body:'#cc2244',glow:'#ff6688',unlock:{coins:300}},
+  {id:'toxic',name:'Toxic',head:'#88ff00',body:'#66cc00',glow:'#aaff44',unlock:{achievement:'glutton'}},
+  {id:'shadow',name:'Shadow',head:'#333344',body:'#222233',glow:'#4444aa',unlock:{achievement:'immortal'}},
+  {id:'crystal',name:'Crystal',head:'#88ccff',body:'#66aadd',glow:'#aaddff',unlock:{achievement:'explorer'}},
+  {id:'diamond',name:'Diamond',head:'#ccddff',body:'#aabbdd',glow:'#ddeeff',unlock:{gems:10}},
+  {id:'void',name:'Void',head:'#ff0088',body:'#cc0066',glow:'#ff44aa',unlock:{achievement:'void_walker'}}
+];
+
+// =====================================================
+// BAŞARIMLAR (20)
+// =====================================================
+const ACHIEVEMENTS=[
+  {id:'first_blood',name:'İlk Kan',desc:'İlk yemi ye',icon:'🍎',check:()=>stats.totalFood>=1},
+  {id:'hungry',name:'Aç',desc:'100 yem ye',icon:'🍽️',check:()=>stats.totalFood>=100},
+  {id:'glutton',name:'Obur',desc:'500 yem ye',icon:'🐷',check:()=>stats.totalFood>=500},
+  {id:'combo_master',name:'Combo Ustası',desc:'x10 combo yap',icon:'🔥',check:()=>stats.maxCombo>=10},
+  {id:'combo_god',name:'Combo Tanrısı',desc:'x20 combo yap',icon:'⚡',check:()=>stats.maxCombo>=20},
+  {id:'boss_hunter',name:'Boss Avcısı',desc:'İlk boss u kes',icon:'🏆',check:()=>stats.bossKills>=1},
+  {id:'boss_slayer',name:'Boss Katili',desc:'10 boss kes',icon:'💀',check:()=>stats.bossKills>=10},
+  {id:'survivor',name:'Hayatta Kalan',desc:'10 dk hayatta kal',icon:'⏱️',check:()=>stats.longestTime>=600},
+  {id:'immortal',name:'Ölümsüz',desc:'15 dk hayatta kal',icon:'♾️',check:()=>stats.longestTime>=900},
+  {id:'speed_demon',name:'Hız Canavarı',desc:'Level 20 ye ulaş',icon:'🚀',check:()=>stats.maxLevel>=20},
+  {id:'explorer',name:'Kaşif',desc:'3 farklı biome keşfet',icon:'🗺️',check:()=>stats.biomesVisited>=3},
+  {id:'collector',name:'Koleksiyoncu',desc:'10 skin aç',icon:'🎨',check:()=>saveData.unlockedSkins.length>=10},
+  {id:'lucky',name:'Şanslı',desc:'50 şanslı yem topla',icon:'🍀',check:()=>stats.luckyFood>=50},
+  {id:'ghost_rider',name:'Hayalet Sürücü',desc:'Ghost da 50 yem',icon:'👻',check:()=>stats.ghostFood>=50},
+  {id:'magnet_king',name:'Mıknatıs Kralı',desc:'Mıknatısla 30 yem',icon:'🧲',check:()=>stats.magnetFood>=30},
+  {id:'coin_master',name:'Coin Ustası',desc:'1000 coin biriktir',icon:'💰',check:()=>saveData.coins>=1000},
+  {id:'perfect_run',name:'Mükemmel Koşu',desc:'Ölmeden level 15',icon:'✨',check:()=>stats.perfectLevel>=15},
+  {id:'void_walker',name:'Void Yürüyüşü',desc:'Void biome u keşfet',icon:'🕳️',check:()=>stats.biomesVisited>=6},
+  {id:'food_hunter',name:'Yem Avcısı',desc:'Tüm yem türlerini ye',icon:'🎯',check:()=>stats.foodTypesEaten>=11},
+  {id:'upgrade_master',name:'Upgrade Ustası',desc:'Tüm upgrade leri al',icon:'⬆️',check:()=>stats.upgradesUsed>=30}
+];
+
+// =====================================================
+// DURUM DEĞİŞKENLERİ
 // =====================================================
 let state='menu';
 let score=0,level=1,xp=0,xpNext=30;
@@ -46,27 +246,23 @@ let enemies=[],enemySpawnTimer=0;
 let selectedBtn=0,selectedUpgrade=0,upgradeChoices=[];
 let deadTimer=0,foodTimer=0;
 let foods=[],tiles=[];
-let howToPlayPage=0;
-
-// Yılan
-let snake=[];
-let snakeRender=[]; // Interpolasyon için render pozisyonları
+let howToPlayPage=0,settingsIdx=0;
+let snake=[],snakeRender=[];
 let dir={x:0,y:-1},nextDir={x:0,y:-1};
 let moveTimer=0,speed=4,startDelay=0;
-
-// Düşman render pozisyonları
-let enemyRender=[];
+let tileEffectTimer=0,iceDir=null;
+let secondLifeUsed=false;
+let dashCooldown=0;
+let stats={totalFood:0,totalScore:0,totalGames:0,totalTime:0,bossKills:0,
+  maxCombo:0,maxLevel:0,longestTime:0,biomesVisited:1,luckyFood:0,
+  ghostFood:0,magnetFood:0,perfectLevel:0,foodTypesEaten:0,upgradesUsed:0,
+  currentPerfect:0};
 
 // =====================================================
 // RENKLER
 // =====================================================
-const C={
-  bg:'#06060f',grid:'#0c0c1e',gridA:'#121230',
-  wall:'#14142e',wallG:'#1e1e48',
-  accent:'#00ffd5',accent2:'#ff2d95',accent3:'#ffe14d',
-  lava:'#ff3d00',ice:'#00d4ff',bush:'#003828',
-  electric:'#ffe14d',portal:'#b44dff'
-};
+function getBiome(){return BIOMES[currentBiome%BIOMES.length]}
+function getC(){const b=getBiome();return{bg:b.bg,grid:b.grid,gridA:b.grid+'88',wall:b.wall,wallG:b.wallG,accent:b.accent,accent2:b.accent2}}
 
 // =====================================================
 // YARDIMCI
@@ -82,7 +278,7 @@ function clamp(v,a,b){return v<a?a:v>b?b:v}
 // =====================================================
 function emit(x,y,vx,vy,life,sz,col){
   if(particles.length>150)return;
-  particles.push({x,y,vx,vy,life,ml:life,sz,col:col||C.accent});
+  particles.push({x,y,vx,vy,life,ml:life,sz,col:col||'#fff'});
 }
 function burst(x,y,col,n){
   for(let i=0;i<(n||6);i++){
@@ -90,29 +286,19 @@ function burst(x,y,col,n){
     emit(x,y,Math.cos(a)*s,Math.sin(a)*s,rnd(0.2,0.4),rnd(2,3),col);
   }
 }
-function floatText(x,y,txt,col){
-  particles.push({x,y,vx:0,vy:-40,life:0.6,ml:0.6,sz:14,col,txt,shape:'text'});
-}
+function floatText(x,y,txt,col){particles.push({x,y,vx:0,vy:-40,life:0.6,ml:0.6,sz:14,col,txt,shape:'text'});}
 function updateParticles(dt){
   for(let i=particles.length-1;i>=0;i--){
-    const p=particles[i];
-    p.life-=dt;
+    const p=particles[i];p.life-=dt;
     if(p.life<=0){particles.splice(i,1);continue;}
-    p.x+=p.vx*dt; p.y+=p.vy*dt;
-    p.vx*=0.95; p.vy*=0.95; p.vy+=30*dt;
+    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=0.95;p.vy*=0.95;p.vy+=30*dt;
   }
 }
 function drawParticles(){
   for(const p of particles){
-    const a=p.life/p.ml;
-    ctx.globalAlpha=a; ctx.fillStyle=p.col;
-    if(p.shape==='text'){
-      ctx.font='bold '+p.sz+'px Orbitron'; ctx.textAlign='center';
-      ctx.fillText(p.txt,p.x|0,p.y|0);
-    } else {
-      const s=p.sz*a;
-      ctx.fillRect((p.x-s/2)|0,(p.y-s/2)|0,s|0,s|0);
-    }
+    const a=p.life/p.ml;ctx.globalAlpha=a;ctx.fillStyle=p.col;
+    if(p.shape==='text'){ctx.font='bold '+p.sz+'px Orbitron';ctx.textAlign='center';ctx.fillText(p.txt,p.x|0,p.y|0);}
+    else{const s=p.sz*a;ctx.fillRect((p.x-s/2)|0,(p.y-s/2)|0,s|0,s|0);}
   }
   ctx.globalAlpha=1;
 }
@@ -124,148 +310,53 @@ function notify(t,c){if(notifications.length<4)notifications.push({t,c:c||'#fff'
 function updateNotifications(dt){for(let i=notifications.length-1;i>=0;i--){notifications[i].tm-=dt;if(notifications[i].tm<=0)notifications.splice(i,1)}}
 function drawNotifications(){
   let y=95;
-  for(const n of notifications){
-    ctx.globalAlpha=Math.min(1,n.tm); ctx.fillStyle=n.c;
-    ctx.font='bold 15px Rajdhani'; ctx.textAlign='center';
-    ctx.fillText(n.t,W/2|0,y); y+=22;
-  }
+  for(const n of notifications){ctx.globalAlpha=Math.min(1,n.tm);ctx.fillStyle=n.c;ctx.font='bold 15px Rajdhani';ctx.textAlign='center';ctx.fillText(n.t,W/2|0,y);y+=22;}
   ctx.globalAlpha=1;
 }
 
 // =====================================================
-// HARİTA + TILE EFEKTLERİ
+// HARİTA
 // =====================================================
 function genMap(){
   tiles=[];
-  for(let y=0;y<ROWS;y++){
-    tiles[y]=new Uint8Array(COLS);
-    for(let x=0;x<COLS;x++){
-      if(x===0||x===COLS-1||y===0||y===ROWS-1)tiles[y][x]=1;
-    }
-  }
-  // Engeller (daha az, daha anlamlı)
-  for(let i=0;i<4;i++){
-    const x=rndInt(4,COLS-5),y=rndInt(4,ROWS-5);
-    tiles[y][x]=rndInt(2,4);
-  }
-  // Spawn bölgesini temizle
+  for(let y=0;y<ROWS;y++){tiles[y]=new Uint8Array(COLS);for(let x=0;x<COLS;x++){if(x===0||x===COLS-1||y===0||y===ROWS-1)tiles[y][x]=1;}}
+  for(let i=0;i<5;i++){const x=rndInt(4,COLS-5),y=rndInt(4,ROWS-5);tiles[y][x]=rndInt(2,4);}
   const cx=COLS/2|0,cy=ROWS/2|0;
-  for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){
-    const nx=cx+dx,ny=cy+dy;
-    if(nx>0&&nx<COLS-1&&ny>0&&ny<ROWS-1)tiles[ny][nx]=0;
-  }
+  for(let dy=-4;dy<=4;dy++)for(let dx=-4;dx<=4;dx++){const nx=cx+dx,ny=cy+dy;if(nx>0&&nx<COLS-1&&ny>0&&ny<ROWS-1)tiles[ny][nx]=0;}
 }
-
-// Tile efektleri
-let tileEffectTimer=0;
-let iceDir=null; // Buz üzerinde kayma yönü
 
 function checkTileEffects(dt){
-  if(snake.length===0) return;
-  const head=snake[0];
-  const tile=tiles[head.y]?tiles[head.y][head.x]:0;
-  
+  if(snake.length===0)return;
+  const head=snake[0],tile=tiles[head.y]?tiles[head.y][head.x]:0;
   tileEffectTimer+=dt;
-  
-  if(tile===3 && tileEffectTimer>1.5){ // LAVA - periyodik hasar
-    tileEffectTimer=0;
-    takeDamage(1,'lava');
-  }
-  if(tile===4){ // BUZ - kayma (yön değişimi zor)
-    iceDir={...dir}; // Mevcut yönü koru
-  } else {
-    iceDir=null;
-  }
-  if(tile===5){ // ÇALI - yavaşlatma (şimdilik yok, eklenebilir)
-    // speed multiplier
-  }
-  if(tile===7 && tileEffectTimer>2){ // ELEKTRİK - periyodik hasar
-    tileEffectTimer=0;
-    takeDamage(1,'electric');
-  }
-}
-
-function takeDamage(amount,source){
-  if(invTimer>0) return;
-  hp-=amount;
-  shake(5,0.3);
-  flash('#ff0044',0.2);
-  burst(snake[0].x*GS+GS/2,snake[0].y*GS+GS/2,'#ff4444',8);
-  playTone(200,0.15);
-  
-  if(hp<=0){
-    die(source||'unknown');
-  } else {
-    invTimer=1.5; // Kısa dokunulmazlık
-    notify('⚠️ -'+amount+' HP','#ff4444');
-  }
+  if(tile===3&&tileEffectTimer>1.5){tileEffectTimer=0;takeDamage(1,'lava');}
+  if(tile===4){iceDir={...dir};}else{iceDir=null;}
+  if(tile===7&&tileEffectTimer>2){tileEffectTimer=0;takeDamage(1,'electric');}
 }
 
 function drawMap(){
+  const C=getC();
   for(let y=0;y<ROWS;y++)for(let x=0;x<COLS;x++){
-    const t=tiles[y][x]; if(t===0)continue;
+    const t=tiles[y][x];if(t===0)continue;
     const px=x*GS,py=y*GS;
-    if(t===1){ // DUVAR
-      ctx.fillStyle=C.wall; ctx.fillRect(px,py,GS,GS);
-      ctx.strokeStyle=C.wallG; ctx.lineWidth=0.5;
-      ctx.strokeRect(px+.5,py+.5,GS-1,GS-1);
-    } else if(t===2){ // KAYA
-      ctx.fillStyle='#3a3a4a'; ctx.fillRect(px+2,py+2,GS-4,GS-4);
-      ctx.fillStyle='#4a4a5a'; ctx.fillRect(px+3,py+3,GS-6,GS-6);
-    } else if(t===3){ // LAVA
-      const tt=Date.now()/500;
-      ctx.fillStyle=C.lava; ctx.fillRect(px,py,GS,GS);
-      ctx.fillStyle='#ff880044';
-      ctx.fillRect(px+3+Math.sin(tt)*2,py+3+Math.cos(tt)*2,GS-6,GS-6);
-    } else if(t===4){ // BUZ
-      ctx.fillStyle=C.ice+'33'; ctx.fillRect(px,py,GS,GS);
-      ctx.strokeStyle=C.ice+'66'; ctx.lineWidth=1;
-      ctx.beginPath();
-      ctx.moveTo(px+GS/2,py+2); ctx.lineTo(px+GS-2,py+GS/2);
-      ctx.lineTo(px+GS/2,py+GS-2); ctx.lineTo(px+2,py+GS/2);
-      ctx.closePath(); ctx.stroke();
-    } else if(t===5){ // ÇALI
-      ctx.fillStyle=C.bush; ctx.fillRect(px+1,py+1,GS-2,GS-2);
-    } else if(t===7){ // ELEKTRİK
-      ctx.fillStyle='#1a1a00'; ctx.fillRect(px,py,GS,GS);
-      ctx.strokeStyle=C.electric; ctx.lineWidth=1.5;
-      const et=Date.now()/150;
-      ctx.beginPath(); ctx.moveTo(px,py+GS/2);
-      for(let i=0;i<4;i++){
-        ctx.lineTo(px+(i+.5)*(GS/4),py+GS/2+Math.sin(et+i*2)*4);
-      }
-      ctx.lineTo(px+GS,py+GS/2); ctx.stroke();
-    }
+    if(t===1){ctx.fillStyle=C.wall;ctx.fillRect(px,py,GS,GS);ctx.strokeStyle=C.wallG;ctx.lineWidth=0.5;ctx.strokeRect(px+.5,py+.5,GS-1,GS-1);}
+    else if(t===2){ctx.fillStyle='#3a3a4a';ctx.fillRect(px+2,py+2,GS-4,GS-4);}
+    else if(t===3){ctx.fillStyle='#ff3d00';ctx.fillRect(px,py,GS,GS);ctx.fillStyle='#ff880044';ctx.fillRect(px+3,py+3,GS-6,GS-6);}
+    else if(t===4){ctx.fillStyle='#00d4ff33';ctx.fillRect(px,py,GS,GS);ctx.strokeStyle='#00d4ff66';ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(px+GS/2,py+2);ctx.lineTo(px+GS-2,py+GS/2);ctx.lineTo(px+GS/2,py+GS-2);ctx.lineTo(px+2,py+GS/2);ctx.closePath();ctx.stroke();}
+    else if(t===7){ctx.fillStyle='#1a1a00';ctx.fillRect(px,py,GS,GS);ctx.strokeStyle='#ffe14d';ctx.lineWidth=1.5;const et=Date.now()/150;ctx.beginPath();ctx.moveTo(px,py+GS/2);for(let i=0;i<4;i++)ctx.lineTo(px+(i+.5)*(GS/4),py+GS/2+Math.sin(et+i*2)*4);ctx.lineTo(px+GS,py+GS/2);ctx.stroke();}
   }
 }
 
 // =====================================================
 // YEM
 // =====================================================
-const FOOD_TYPES=[
-  {type:'normal',color:'#ff2244',w:45,sc:1,len:1,xp:0,hp:0,icon:'🍎'},
-  {type:'golden',color:'#ffaa00',w:12,sc:5,len:2,xp:0,hp:0,icon:'⭐'},
-  {type:'crystal',color:'#aa44ff',w:10,sc:0,len:0,xp:20,hp:0,icon:'💎'},
-  {type:'heart',color:'#ff44aa',w:10,sc:0,len:0,xp:0,hp:1,icon:'❤️'},
-  {type:'clock',color:'#4488ff',w:6,sc:0,len:0,xp:0,hp:0,icon:'⏱️'},
-  {type:'magnet',color:'#00ffcc',w:5,sc:0,len:0,xp:0,hp:0,icon:'🧲'},
-  {type:'star',color:'#ffffff',w:4,sc:0,len:0,xp:0,hp:0,icon:'✨'},
-  {type:'coin',color:'#ffcc00',w:8,sc:2,len:0,xp:0,hp:0,icon:'🪙'}
-];
-
-function pickFood(){
-  let r=Math.random()*100;
-  for(const f of FOOD_TYPES){r-=f.w;if(r<=0)return f.type;}
-  return 'normal';
-}
+function pickFood(){let r=Math.random()*100;for(const f of FOOD_TYPES){r-=f.w;if(r<=0)return f.type;}return'normal';}
 
 function spawnFood(){
   if(foods.length>=8)return;
-  const type=pickFood();
-  const def=FOOD_TYPES.find(f=>f.type===type);
+  const type=pickFood(),def=FOOD_TYPES.find(f=>f.type===type);
   let x,y,tr=0;
-  do{x=rndInt(2,COLS-3);y=rndInt(2,ROWS-3);tr++}
-  while(tiles[y]&&tiles[y][x]!==0&&tr<30);
+  do{x=rndInt(2,COLS-3);y=rndInt(2,ROWS-3);tr++;}while(tiles[y]&&tiles[y][x]!==0&&tr<30);
   if(tr>=30)return;
   foods.push({x,y,type,...def,anim:rnd(0,6.28),alive:true});
 }
@@ -277,210 +368,144 @@ function drawFood(){
     const cx=f.x*GS+GS/2,cy=f.y*GS+GS/2;
     const pulse=Math.sin(now/300+f.anim)*0.1+1;
     const sz=(GS/2-1)*pulse;
-    
-    // Dış glow
-    ctx.fillStyle=f.color+'33';
-    ctx.beginPath(); ctx.arc(cx,cy,sz+3,0,PI2); ctx.fill();
-    
-    // Ana daire
+    ctx.fillStyle=f.color+'33';ctx.beginPath();ctx.arc(cx,cy,sz+3,0,PI2);ctx.fill();
     const g=ctx.createRadialGradient(cx-2,cy-2,0,cx,cy,sz);
-    g.addColorStop(0,'#ffffff'); g.addColorStop(0.4,f.color); g.addColorStop(1,f.color+'88');
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(cx,cy,sz,0,PI2); ctx.fill();
-    
-    // Emoji
-    ctx.font=(sz*.65|0)+'px Arial';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
+    g.addColorStop(0,'#ffffff');g.addColorStop(0.4,f.color);g.addColorStop(1,f.color+'88');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,sz,0,PI2);ctx.fill();
+    ctx.font=(sz*.65|0)+'px Arial';ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(f.icon,cx,cy);
   }
 }
 
 // =====================================================
-// YILAN (interpolasyonlu)
+// YILAN
 // =====================================================
 function initSnake(){
   const cx=COLS/2|0,cy=ROWS/2|0;
   snake=[{x:cx,y:cy},{x:cx,y:cy+1},{x:cx,y:cy+2}];
   snakeRender=snake.map(s=>({x:s.x,y:s.y}));
-  dir={x:0,y:-1}; nextDir={x:0,y:-1};
-  moveTimer=0; speed=4; hp=4; maxHp=4; invTimer=2;
-  startDelay=0.5;
-  tileEffectTimer=0;
+  dir={x:0,y:-1};nextDir={x:0,y:-1};
+  moveTimer=0;speed=4;hp=4;maxHp=4;invTimer=2;startDelay=0.5;
+  tileEffectTimer=0;secondLifeUsed=false;dashCooldown=0;
+  stats.currentPerfect=0;
+}
+
+function takeDamage(amount,source){
+  if(invTimer>0)return;
+  hp-=amount;
+  shake(5,0.3);flash('#ff0044',0.2);
+  burst(snake[0].x*GS+GS/2,snake[0].y*GS+GS/2,'#ff4444',8);
+  playTone(200,0.15);
+  if(hp<=0){
+    if(!secondLifeUsed&&upgrades.includes('secondLife')){
+      secondLifeUsed=true;hp=Math.ceil(maxHp/2);invTimer=3;
+      notify('💖 İKİNCİ HAYAT!','#ff44aa');
+    }else{die(source||'unknown');}
+  }else{invTimer=1.5;notify('⚠️ -'+amount+' HP','#ff4444');}
 }
 
 function updateSnake(dt){
   if(startDelay>0){startDelay-=dt;return;}
-  
-  // Interpolasyon: render pozisyonlarını gerçek pozisyona yaklaştır
   for(let i=0;i<snake.length;i++){
-    if(snakeRender[i]){
-      snakeRender[i].x=lerp(snakeRender[i].x,snake[i].x,Math.min(1,dt*12));
-      snakeRender[i].y=lerp(snakeRender[i].y,snake[i].y,Math.min(1,dt*12));
-    }
+    if(snakeRender[i]){snakeRender[i].x=lerp(snakeRender[i].x,snake[i].x,Math.min(1,dt*12));snakeRender[i].y=lerp(snakeRender[i].y,snake[i].y,Math.min(1,dt*12));}
   }
-  
   moveTimer+=dt;
   const interval=1/speed;
   while(moveTimer>=interval){
     moveTimer-=interval;
-    
-    // Buz üzerindeyken yön değişimi engelle
-    if(!iceDir){
-      if(dir.x!==-nextDir.x||dir.y!==-nextDir.y)dir={...nextDir};
-    }
-    
-    const head=snake[0];
-    let nx=head.x+dir.x,ny=head.y+dir.y;
-    
-    // Duvar kontrolü
+    if(!iceDir){if(dir.x!==-nextDir.x||dir.y!==-nextDir.y)dir={...nextDir};}
+    const head=snake[0];let nx=head.x+dir.x,ny=head.y+dir.y;
     if(nx<0||nx>=COLS||ny<0||ny>=ROWS||(tiles[ny]&&tiles[ny][nx]===1)){
-      if(invTimer>0)continue;
-      die('wall'); return;
+      if(invTimer>0)continue;die('wall');return;
     }
-    
-    // Kuyruk kontrolü
     if(invTimer<=0){
-      for(let i=1;i<snake.length;i++){
-        if(snake[i].x===nx&&snake[i].y===ny){die('self');return;}
-      }
+      for(let i=1;i<snake.length;i++)if(snake[i].x===nx&&snake[i].y===ny){die('self');return;}
     }
-    
-    // Hareket
     snake.unshift({x:nx,y:ny});
     snakeRender.unshift({x:snakeRender[0]?snakeRender[0].x:nx,y:snakeRender[0]?snakeRender[0].y:ny});
     while(snake.length>3+level){snake.pop();snakeRender.pop();}
-    
-    // Yem kontrolü
     for(let i=foods.length-1;i>=0;i--){
-      const f=foods[i];
-      if(f.alive&&f.x===nx&&f.y===ny){
-        collectFood(f);
-        foods.splice(i,1);
-      }
+      const f=foods[i];if(f.alive&&f.x===nx&&f.y===ny){collectFood(f);foods.splice(i,1);}
     }
   }
-  
-  // Tile efektleri
   checkTileEffects(dt);
-  
-  // Invincibility
   if(invTimer>0)invTimer-=dt;
-  
-  // Combo timer
   if(comboTimer>0){comboTimer-=dt;if(comboTimer<=0){combo=0;comboMult=1;}}
+  if(dashCooldown>0)dashCooldown-=dt;
 }
 
 function drawSnake(){
-  const now=Date.now();
-  const len=snake.length;
-  if(len===0)return;
-  
+  const now=Date.now();const len=snake.length;if(len===0)return;
+  const skin=SKINS.find(s=>s.id===saveData.equippedSkin)||SKINS[0];
   for(let i=len-1;i>=0;i--){
     const s=snakeRender[i]||snake[i];
     const px=s.x*GS+GS/2,py=s.y*GS+GS/2;
-    const segT=i/Math.max(1,len-1);
-    const sz=(GS/2-2)*(1-segT*0.25);
-    
+    const segT=i/Math.max(1,len-1);const sz=(GS/2-2)*(1-segT*0.25);
     ctx.save();
     if(invTimer>0&&(now/100|0)%2===0)ctx.globalAlpha=0.4;
-    
     if(i===0){
-      // KAFA
       const g=ctx.createRadialGradient(px-3,py-3,1,px,py,sz+2);
-      g.addColorStop(0,'#66ffdd'); g.addColorStop(0.7,C.accent); g.addColorStop(1,'#008866');
-      ctx.fillStyle=g;
-      ctx.beginPath(); ctx.arc(px,py,sz+2,0,PI2); ctx.fill();
-      
-      // Highlight
-      ctx.fillStyle='rgba(255,255,255,0.3)';
-      ctx.beginPath(); ctx.arc(px-4,py-4,sz*0.3,0,PI2); ctx.fill();
-      
-      // Gözler
+      g.addColorStop(0,skin.head);g.addColorStop(0.7,skin.body);g.addColorStop(1,skin.body+'88');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,sz+2,0,PI2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.3)';ctx.beginPath();ctx.arc(px-4,py-4,sz*0.3,0,PI2);ctx.fill();
       const eo=sz*0.35,es=sz*0.22;
       const lx=px+dir.x*3-dir.y*eo,ly=py+dir.y*3+dir.x*eo;
       const rx=px+dir.x*3+dir.y*eo,ry=py+dir.y*3-dir.x*eo;
-      
-      ctx.fillStyle='#fff';
-      ctx.beginPath();ctx.arc(lx,ly,es+2,0,PI2);ctx.fill();
-      ctx.beginPath();ctx.arc(rx,ry,es+2,0,PI2);ctx.fill();
-      
-      ctx.fillStyle=C.accent;
-      ctx.beginPath();ctx.arc(lx+dir.x*1.5,ly+dir.y*1.5,es*0.7,0,PI2);ctx.fill();
-      ctx.beginPath();ctx.arc(rx+dir.x*1.5,ry+dir.y*1.5,es*0.7,0,PI2);ctx.fill();
-      
-      ctx.fillStyle='#000';
-      ctx.beginPath();ctx.arc(lx+dir.x*2.5,ly+dir.y*2.5,es*0.4,0,PI2);ctx.fill();
-      ctx.beginPath();ctx.arc(rx+dir.x*2.5,ry+dir.y*2.5,es*0.4,0,PI2);ctx.fill();
-      
-      ctx.fillStyle='rgba(255,255,255,0.8)';
-      ctx.beginPath();ctx.arc(lx-1,ly-1,es*0.2,0,PI2);ctx.fill();
-      ctx.beginPath();ctx.arc(rx-1,ry-1,es*0.2,0,PI2);ctx.fill();
-      
-    } else {
-      // GÖVDE
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(lx,ly,es+2,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(rx,ry,es+2,0,PI2);ctx.fill();
+      ctx.fillStyle=skin.glow;ctx.beginPath();ctx.arc(lx+dir.x*1.5,ly+dir.y*1.5,es*0.7,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(rx+dir.x*1.5,ry+dir.y*1.5,es*0.7,0,PI2);ctx.fill();
+      ctx.fillStyle='#000';ctx.beginPath();ctx.arc(lx+dir.x*2.5,ly+dir.y*2.5,es*0.4,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(rx+dir.x*2.5,ry+dir.y*2.5,es*0.4,0,PI2);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.8)';ctx.beginPath();ctx.arc(lx-1,ly-1,es*0.2,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(rx-1,ry-1,es*0.2,0,PI2);ctx.fill();
+    }else{
       const g=ctx.createRadialGradient(px-2,py-2,0,px,py,sz);
-      g.addColorStop(0,'#44ddbb'); g.addColorStop(1,'#00aa88');
-      ctx.fillStyle=g;
-      ctx.beginPath(); ctx.arc(px,py,sz,0,PI2); ctx.fill();
-      
-      if(i%2===0){
-        ctx.fillStyle='rgba(255,255,255,0.1)';
-        ctx.beginPath(); ctx.arc(px-1,py-1,sz*0.4,0,PI2); ctx.fill();
-      }
+      g.addColorStop(0,skin.head);g.addColorStop(1,skin.body);
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(px,py,sz,0,PI2);ctx.fill();
+      if(i%2===0){ctx.fillStyle='rgba(255,255,255,0.1)';ctx.beginPath();ctx.arc(px-1,py-1,sz*0.4,0,PI2);ctx.fill();}
     }
     ctx.restore();
   }
 }
 
 // =====================================================
-// DÜŞMANLAR (interpolasyonlu, hasar sistemi)
+// DÜŞMANLAR
 // =====================================================
 function spawnEnemy(){
-  const types=['bug','chaser','ghost'];
-  const type=types[rndInt(0,2)];
+  const biome=currentBiome;
+  const available=ENEMY_TYPES.filter((_,i)=>{
+    if(biome===0)return i<3; // Neon City: bug, snake, bomber
+    if(biome===1)return i<4; // Frozen Lab: + drone
+    if(biome===2)return i<5; // Lava Core: + ghost
+    return true; // Others: all
+  });
+  const def=available[rndInt(0,available.length-1)];
   let x,y,tr=0;
-  do{x=rndInt(3,COLS-4);y=rndInt(3,ROWS-4);tr++}
+  do{x=rndInt(3,COLS-4);y=rndInt(3,ROWS-4);tr++;}
   while((tiles[y]&&tiles[y][x]!==0||dist(x,y,snake[0].x,snake[0].y)<10)&&tr<30);
   if(tr>=30)return;
-  const d={bug:{sp:2,hp:2,col:'#ff2244'},chaser:{sp:3,hp:2,col:'#ff4444'},ghost:{sp:1.5,hp:999,col:'#aaaaff'}}[type];
-  const e={x,y,type,...d,alive:true,mt:0,anim:0,dir:{x:0,y:-1},rx:x,ry:y};
-  enemies.push(e);
+  enemies.push({x,y,type:def.type,speed:def.speed,hp:def.hp,color:def.color,ai:def.ai,alive:true,mt:0,anim:0,dir:{x:0,y:-1},rx:x,ry:y});
 }
 
 function updateEnemies(dt){
   enemySpawnTimer+=dt;
-  if(enemySpawnTimer>=10&&enemies.length<3){enemySpawnTimer=0;spawnEnemy();}
-  
+  if(enemySpawnTimer>=10&&enemies.length<4){enemySpawnTimer=0;spawnEnemy();}
   for(const e of enemies){
-    if(!e.alive)continue;
-    e.anim+=dt;
-    
-    // Interpolasyon
-    e.rx=lerp(e.rx,e.x,Math.min(1,dt*10));
-    e.ry=lerp(e.ry,e.y,Math.min(1,dt*10));
-    
+    if(!e.alive)continue;e.anim+=dt;
+    e.rx=lerp(e.rx,e.x,Math.min(1,dt*10));e.ry=lerp(e.ry,e.y,Math.min(1,dt*10));
     e.mt+=dt;
-    if(e.mt>=1/e.sp){
+    if(e.mt>=1/Math.max(0.5,e.speed)){
       e.mt=0;
-      if(e.type==='chaser'){
+      if(e.ai==='chase'||e.ai==='aggressive'){
         const dx=snake[0].x-e.x,dy=snake[0].y-e.y;
-        if(Math.abs(dx)>Math.abs(dy))e.dir={x:dx>0?1:-1,y:0};
-        else e.dir={x:0,y:dy>0?1:-1};
-      }else if(e.type==='bug'&&Math.random()<0.3){
+        if(Math.abs(dx)>Math.abs(dy))e.dir={x:dx>0?1:-1,y:0};else e.dir={x:0,y:dy>0?1:-1};
+      }else if(e.ai==='wander'&&Math.random()<0.3){
         e.dir=[{x:0,y:-1},{x:0,y:1},{x:-1,y:0},{x:1,y:0}][rndInt(0,3)];
       }
       let nx=e.x+e.dir.x,ny=e.y+e.dir.y;
-      if(e.type==='ghost'){nx=((nx%COLS)+COLS)%COLS;ny=((ny%ROWS)+ROWS)%ROWS;}
+      if(e.ai==='ghost'){nx=((nx%COLS)+COLS)%COLS;ny=((ny%ROWS)+ROWS)%ROWS;}
       else if(nx<1||nx>=COLS-1||ny<1||ny>=ROWS-1||(tiles[ny]&&tiles[ny][nx]===1))continue;
       e.x=nx;e.y=ny;
     }
-    
-    // Oyuncu çarpışma (hasar sistemi, anında ölüm değil)
-    if(invTimer<=0 && dist(snake[0].x,snake[0].y,e.x,e.y)<1.5){
-      takeDamage(1,'enemy');
-      // Düşmanı geri it
-      e.x+=e.dir.x*-3; e.y+=e.dir.y*-3;
-      e.rx=e.x; e.ry=e.y;
+    if(invTimer<=0&&dist(snake[0].x,snake[0].y,e.x,e.y)<1.5){
+      takeDamage(1,'enemy');e.x+=e.dir.x*-3;e.y+=e.dir.y*-3;e.rx=e.x;e.ry=e.y;
     }
   }
 }
@@ -490,17 +515,11 @@ function drawEnemies(){
     if(!e.alive)continue;
     const cx=e.rx*GS+GS/2,cy=e.ry*GS+GS/2,sz=GS/2-2;
     ctx.save();
-    if(e.type==='ghost')ctx.globalAlpha=0.4+Math.sin(e.anim*3)*0.2;
-    
+    if(e.ai==='ghost')ctx.globalAlpha=0.4+Math.sin(e.anim*3)*0.2;
     const g=ctx.createRadialGradient(cx-2,cy-2,0,cx,cy,sz);
-    g.addColorStop(0,e.col); g.addColorStop(1,e.col+'88');
-    ctx.fillStyle=g;
-    ctx.beginPath(); ctx.arc(cx,cy,sz*0.8,0,PI2); ctx.fill();
-    
-    // Gözler
-    ctx.fillStyle='#f00';
-    ctx.beginPath();ctx.arc(cx-3,cy-3,2,0,PI2);ctx.fill();
-    ctx.beginPath();ctx.arc(cx+3,cy-3,2,0,PI2);ctx.fill();
+    g.addColorStop(0,e.color);g.addColorStop(1,e.color+'88');
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,sz*0.8,0,PI2);ctx.fill();
+    ctx.fillStyle='#f00';ctx.beginPath();ctx.arc(cx-3,cy-3,2,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(cx+3,cy-3,2,0,PI2);ctx.fill();
     ctx.restore();
   }
 }
@@ -509,31 +528,25 @@ function drawEnemies(){
 // BOSS
 // =====================================================
 function spawnBoss(){
-  bossActive={x:COLS/2|0,y:5,hp:15+level*3,maxHp:15+level*3,color:C.accent2,name:'BOSS',anim:0,rx:COLS/2|0,ry:5};
-  notify('⚠️ BOSS GELİYOR!','#ff0044');
+  const bossIdx=Math.min(Math.floor(level/5)-1,BOSS_TYPES.length-1);
+  const def=BOSS_TYPES[bossIdx];
+  bossActive={x:COLS/2|0,y:5,hp:def.hp+level*2,maxHp:def.hp+level*2,color:def.color,name:def.name,anim:0,rx:COLS/2|0,ry:5,attacks:def.attacks,attackTimer:0,phase:0};
+  notify('⚠️ '+def.name+' GELİYOR!','#ff0044');
 }
 
 function updateBoss(dt){
   if(!bossActive)return;
-  bossActive.anim+=dt;
-  
-  // Basit AI: oyuncuya doğru hareket
+  bossActive.anim+=dt;bossActive.attackTimer+=dt;
   const dx=snake[0].x-bossActive.x,dy=snake[0].y-bossActive.y;
-  bossActive.x+=Math.sign(dx)*dt*1.5;
-  bossActive.y+=Math.sign(dy)*dt*1.5;
-  
-  // Interpolasyon
+  bossActive.x+=Math.sign(dx)*dt*1.5;bossActive.y+=Math.sign(dy)*dt*1.5;
   bossActive.rx=lerp(bossActive.rx,bossActive.x,Math.min(1,dt*8));
   bossActive.ry=lerp(bossActive.ry,bossActive.y,Math.min(1,dt*8));
-  
-  // Sınır kontrolü
-  bossActive.x=clamp(bossActive.x,2,COLS-3);
-  bossActive.y=clamp(bossActive.y,2,ROWS-3);
-  
-  // Çarpışma
-  if(invTimer<=0&&dist(snake[0].x,snake[0].y,Math.round(bossActive.x),Math.round(bossActive.y))<2){
-    takeDamage(1,'boss');
-  }
+  bossActive.x=clamp(bossActive.x,2,COLS-3);bossActive.y=clamp(bossActive.y,2,ROWS-3);
+  if(invTimer<=0&&dist(snake[0].x,snake[0].y,Math.round(bossActive.x),Math.round(bossActive.y))<2)takeDamage(1,'boss');
+  // Faz geçişi
+  const hpPct=bossActive.hp/bossActive.maxHp;
+  if(hpPct<0.5&&bossActive.phase===0){bossActive.phase=1;notify('💢 FAZ 2!','#ff4444');}
+  if(hpPct<0.25&&bossActive.phase===1){bossActive.phase=2;notify('💀 FAZ 3!','#ff0044');}
 }
 
 function hitBoss(dmg){
@@ -542,8 +555,10 @@ function hitBoss(dmg){
   burst(bossActive.rx*GS+GS/2,bossActive.ry*GS+GS/2,bossActive.color,6);
   if(bossActive.hp<=0){
     burst(bossActive.rx*GS+GS/2,bossActive.ry*GS+GS/2,'#ffaa00',20);
-    notify('🏆 BOSS YENİLDİ! +50 Skor','#ffaa00');
-    bossActive=null; score+=50;
+    notify('🏆 '+bossActive.name+' YENİLDİ! +50','#ffaa00');
+    bossActive=null;score+=50;stats.bossKills++;
+    if(stats.bossKills>=1)checkAchievement('boss_hunter');
+    if(stats.bossKills>=10)checkAchievement('boss_slayer');
     playTone(800,0.2);
   }
 }
@@ -552,34 +567,17 @@ function drawBoss(){
   if(!bossActive)return;
   const cx=bossActive.rx*GS+GS/2,cy=bossActive.ry*GS+GS/2,sz=GS*1.3;
   ctx.save();
-  
   const g=ctx.createRadialGradient(cx-4,cy-4,2,cx,cy,sz);
-  g.addColorStop(0,'#ff88aa'); g.addColorStop(0.5,bossActive.color); g.addColorStop(1,'#880022');
-  ctx.fillStyle=g;
-  ctx.beginPath(); ctx.arc(cx,cy,sz,0,PI2); ctx.fill();
-  
-  // Desen
-  ctx.strokeStyle=bossActive.color+'44'; ctx.lineWidth=2;
-  for(let i=0;i<3;i++){
-    ctx.beginPath();
-    ctx.arc(cx,cy,sz*(0.3+i*0.2),bossActive.anim+i*2,bossActive.anim+i*2+4);
-    ctx.stroke();
-  }
-  
-  // Gözler
-  ctx.fillStyle='#fff';
-  ctx.beginPath();ctx.arc(cx-sz*.3,cy-sz*.2,6,0,PI2);ctx.fill();
-  ctx.beginPath();ctx.arc(cx+sz*.3,cy-sz*.2,6,0,PI2);ctx.fill();
-  ctx.fillStyle=bossActive.color;
-  ctx.beginPath();ctx.arc(cx-sz*.3,cy-sz*.2,3,0,PI2);ctx.fill();
-  ctx.beginPath();ctx.arc(cx+sz*.3,cy-sz*.2,3,0,PI2);ctx.fill();
-  
-  // HP bar
+  g.addColorStop(0,'#ff88aa');g.addColorStop(0.5,bossActive.color);g.addColorStop(1,'#880022');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,sz,0,PI2);ctx.fill();
+  ctx.strokeStyle=bossActive.color+'44';ctx.lineWidth=2;
+  for(let i=0;i<3;i++){ctx.beginPath();ctx.arc(cx,cy,sz*(0.3+i*0.2),bossActive.anim+i*2,bossActive.anim+i*2+4);ctx.stroke();}
+  ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(cx-sz*.3,cy-sz*.2,6,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(cx+sz*.3,cy-sz*.2,6,0,PI2);ctx.fill();
+  ctx.fillStyle=bossActive.color;ctx.beginPath();ctx.arc(cx-sz*.3,cy-sz*.2,3,0,PI2);ctx.fill();ctx.beginPath();ctx.arc(cx+sz*.3,cy-sz*.2,3,0,PI2);ctx.fill();
   const bw=GS*5,bh=8,bx=cx-bw/2,by=cy-sz-15;
-  ctx.fillStyle='#0a0a1a'; ctx.fillRect(bx-1,by-1,bw+2,bh+2);
-  ctx.fillStyle='#ff0044'; ctx.fillRect(bx,by,bw*(bossActive.hp/bossActive.maxHp),bh);
-  ctx.fillStyle='#fff'; ctx.font='bold 11px Orbitron'; ctx.textAlign='center';
-  ctx.fillText('BOSS',cx,by-4);
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(bx-1,by-1,bw+2,bh+2);
+  ctx.fillStyle='#ff0044';ctx.fillRect(bx,by,bw*(bossActive.hp/bossActive.maxHp),bh);
+  ctx.fillStyle='#fff';ctx.font='bold 11px Orbitron';ctx.textAlign='center';ctx.fillText(bossActive.name,cx,by-4);
   ctx.restore();
 }
 
@@ -587,86 +585,108 @@ function drawBoss(){
 // YEM TOPLAMA
 // =====================================================
 function collectFood(f){
-  combo++; comboTimer=2.5;
+  combo++;comboTimer=2.5;
   comboMult=combo>=12?10:combo>=8?5:combo>=5?3:combo>=3?2:1;
-  
-  const scoreGain=(f.sc||0)*comboMult;
-  score+=scoreGain;
-  xp+=(f.xp||0);
-  
-  if(f.len>0)for(let i=0;i<f.len;i++){
-    snake.push({...snake[snake.length-1]});
-    snakeRender.push({...snakeRender[snakeRender.length-1]});
-  }
+  let sc=(f.sc||0)*comboMult;
+  if(upgrades.includes('score2x'))sc*=2;
+  score+=sc;
+  let xpg=f.xp||0;
+  if(upgrades.includes('xp2x'))xpg*=2;
+  xp+=xpg;
+  if(f.len>0)for(let i=0;i<f.len;i++){snake.push({...snake[snake.length-1]});snakeRender.push({...snakeRender[snakeRender.length-1]});}
+  if(f.len<0){for(let i=0;i<Math.abs(f.len);i++){if(snake.length>3){snake.pop();snakeRender.pop();}}}
   if(f.hp>0)hp=Math.min(hp+f.hp,maxHp);
   if(bossActive)hitBoss(1);
-  
   const cx=f.x*GS+GS/2,cy=f.y*GS+GS/2;
   burst(cx,cy,f.color,6);
-  if(scoreGain>0)floatText(cx,cy-10,'+'+scoreGain,f.color);
-  if(f.xp>0)floatText(cx,cy-25,'+'+f.xp+' XP','#aa44ff');
+  if(sc>0)floatText(cx,cy-10,'+'+sc,f.color);
+  if(xpg>0)floatText(cx,cy-25,'+'+xpg+' XP','#aa44ff');
   if(f.hp>0)floatText(cx,cy-25,'+'+f.hp+' HP','#ff44aa');
   
+  // Özel efektler
+  if(f.effect==='slow'){speed*=0.7;setTimeout(()=>speed=Math.min(12,4+level*0.3),3000);}
+  if(f.effect==='bomb'){takeDamage(2,'bomb');}
+  if(f.effect==='invincible'){invTimer=3;}
+  if(f.effect==='coin'){saveData.coins+=rndInt(1,5);}
+  if(f.effect==='lucky'){const r=Math.random();if(r<0.3){score+=10;notify('+10 Skor!','#ffaa00');}else if(r<0.6){hp=Math.min(hp+2,maxHp);notify('+2 HP!','#ff44aa');}else{xp+=30;notify('+30 XP!','#aa44ff');}stats.luckyFood++;}
+  
+  // İstatistikler
+  stats.totalFood++;saveData.totalFood++;
+  if(f.type==='lucky')stats.luckyFood++;
+  if(f.type==='magnet')stats.magnetFood++;
+  if(invTimer>0&&upgrades.includes('ghost'))stats.ghostFood++;
+  stats.foodTypesEaten=Math.max(stats.foodTypesEaten,FOOD_TYPES.length);
+  
   // Level up
-  if(xp>=xpNext){
-    xp-=xpNext; level++;
-    xpNext=Math.floor(xpNext*1.15);
-    speed=Math.min(12,4+level*0.3);
+  if(xp>=xpNext){xp-=xpNext;level++;xpNext=Math.floor(xpNext*1.15);speed=Math.min(12,4+level*0.3);
+    stats.maxLevel=Math.max(stats.maxLevel,level);stats.currentPerfect=level;
+    if(level%5===0)spawnBoss();
     showUpgradeScreen();
   }
-  
-  // Combo efekt
   if(combo>=3){shake(2,0.1);}
-  
-  // Boss spawn (her 5 levelde)
-  if(level>1 && level%5===0 && !bossActive && xp>=xpNext-5){
-    spawnBoss();
-  }
-  
   playTone(440+combo*15,0.06);
+  checkAchievement('first_blood');checkAchievement('hungry');checkAchievement('glutton');
 }
 
 function die(reason){
-  state='dead'; hp=0; deadTimer=0;
-  shake(8,0.4); flash('#ff0044',0.3);
-  for(const s of snake)burst(s.x*GS+GS/2,s.y*GS+GS/2,C.accent,5);
+  state='dead';hp=0;deadTimer=0;
+  stats.totalGames++;saveData.totalGames++;
+  stats.totalScore+=score;saveData.totalScore+=score;
+  stats.totalTime+=gameTime;saveData.totalTime+=gameTime;
+  stats.longestTime=Math.max(stats.longestTime,gameTime);
+  stats.perfectLevel=Math.max(stats.perfectLevel,stats.currentPerfect);
+  if(score>saveData.highScore)saveData.highScore=score;
+  saveData.coins+=Math.floor(score*0.05);
+  shake(8,0.4);flash('#ff0044',0.3);
+  for(const s of snake)burst(s.x*GS+GS/2,s.y*GS+GS/2,getBiome().accent,5);
   playTone(200,0.25);
+  writeSave();
+  checkAchievement('survivor');checkAchievement('immortal');checkAchievement('speed_demon');
+  checkAchievement('coin_master');checkAchievement('perfect_run');
 }
 
 // =====================================================
 // UPGRADE
 // =====================================================
-const UPGRADES=[
-  {id:'speed',name:'Hız Artışı',desc:'+%20 hız',icon:'🏃',color:'#00ffcc'},
-  {id:'hp',name:'Extra Can',desc:'+1 max can',icon:'❤️',color:'#ff44aa'},
-  {id:'magnet',name:'Mıknatıs',desc:'Yemleri çeker',icon:'🧲',color:'#00ffcc'},
-  {id:'score2x',name:'2x Puan',desc:'Çift puan',icon:'💯',color:'#ffaa00'},
-  {id:'xp2x',name:'2x XP',desc:'Çift XP',icon:'📈',color:'#aa44ff'},
-  {id:'shield',name:'Kalkan',desc:'3 sn dokunulmaz',icon:'🛡️',color:'#4488ff'},
-  {id:'long',name:'Uzun Kuyruk',desc:'+2 uzunluk',icon:'📏',color:'#00ffcc'},
-  {id:'heal',name:'Tam İyileşme',desc:'Canı doldur',icon:'💚',color:'#44ff44'}
-];
-
 function showUpgradeScreen(){
-  state='levelup'; selectedUpgrade=0; upgradeChoices=[];
-  const used=new Set();
-  for(let i=0;i<3;i++){
-    let idx; do{idx=rndInt(0,UPGRADES.length-1);}while(used.has(idx));
-    used.add(idx); upgradeChoices.push(UPGRADES[idx]);
-  }
-  shake(3,0.2); flash('#ffaa00',0.15); playTone(523,0.1);
+  state='levelup';selectedUpgrade=0;
+  upgradeChoices=pickUpgrades(3);
+  shake(3,0.2);flash('#ffaa00',0.15);playTone(523,0.1);
 }
 
 function applyUpgrade(u){
-  upgrades.push(u.id);
+  upgrades.push(u.id);stats.upgradesUsed++;
   if(u.id==='speed')speed*=1.2;
+  if(u.id==='slow')speed*=0.85;
   if(u.id==='hp'){maxHp++;hp++;}
-  if(u.id==='shield')invTimer=3;
-  if(u.id==='long'){snake.push({...snake[snake.length-1]});snakeRender.push({...snakeRender[snakeRender.length-1]});}
   if(u.id==='heal')hp=maxHp;
-  if(u.id==='score2x'){} // collectFood'da kontrol edilecek
-  if(u.id==='xp2x'){} // collectFood'da kontrol edilecek
-  notify('⬆️ '+u.name+'!',u.color); playTone(660,0.1);
+  if(u.id==='shield')invTimer=3;
+  if(u.id==='longTail'){snake.push({...snake[snake.length-1]});snakeRender.push({...snakeRender[snakeRender.length-1]});}
+  if(u.id==='armor'){invTimer=2;}
+  if(u.id==='dash'){notify('💨 Dash: SPACE','#00ffcc');}
+  notify('⬆️ '+u.name+'!',getC().accent);playTone(660,0.1);
+  writeSave();
+}
+
+// =====================================================
+// BAŞARIMLAR
+// =====================================================
+function checkAchievement(id){
+  if(saveData.achievements.includes(id))return;
+  const ach=ACHIEVEMENTS.find(a=>a.id===id);
+  if(ach&&ach.check()){
+    saveData.achievements.push(id);
+    notify('🏆 '+ach.name+': '+ach.desc,'#ffaa00');
+    playTone(800,0.15);
+    writeSave();
+    // Skin kilidi kontrolü
+    for(const skin of SKINS){
+      if(skin.unlock&&skin.unlock.achievement===id&&!saveData.unlockedSkins.includes(skin.id)){
+        saveData.unlockedSkins.push(skin.id);
+        notify('🎨 Yeni Skin: '+skin.name,'#aa44ff');
+      }
+    }
+  }
 }
 
 // =====================================================
@@ -676,19 +696,16 @@ let actx;
 function initAudio(){if(!actx)actx=new(window.AudioContext||window.webkitAudioContext)();}
 function playTone(f,d){
   if(!actx)return;
-  try{
-    const o=actx.createOscillator(),g=actx.createGain();
-    o.type='sine'; o.frequency.value=f;
-    g.gain.setValueAtTime(0.1,actx.currentTime);
-    g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);
-    o.connect(g); g.connect(actx.destination); o.start(); o.stop(actx.currentTime+d);
-  }catch(e){}
+  try{const o=actx.createOscillator(),g=actx.createGain();o.type='sine';o.frequency.value=f;
+  g.gain.setValueAtTime(saveData.settings.sound*0.15,actx.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001,actx.currentTime+d);
+  o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);}catch(e){}
 }
 
 // =====================================================
 // EFEKTLER
 // =====================================================
-function shake(i,d){shakeX=i;shakeY=i;shakeTimer=d;}
+function shake(i,d){if(!saveData.settings.shake)return;shakeX=i;shakeY=i;shakeTimer=d;}
 function flash(c,d){flashColor=c;flashTimer=d;}
 function updateEffects(dt){
   if(shakeTimer>0){shakeTimer-=dt;const t=shakeTimer;shakeX=(Math.random()-.5)*shakeX*2*t;shakeY=(Math.random()-.5)*shakeY*2*t;}
@@ -701,57 +718,72 @@ function updateEffects(dt){
 // =====================================================
 addEventListener('keydown',e=>{
   const c=e.code;
-  
-  // Yön tuşları (her durumda)
-  if(c==='ArrowUp'||c==='KeyW'){
-    e.preventDefault();
+  if(c==='ArrowUp'||c==='KeyW'){e.preventDefault();
     if(state==='play')nextDir={x:0,y:-1};
-    if(state==='menu')selectedBtn=(selectedBtn-1+3)%3;
+    if(state==='menu')selectedBtn=(selectedBtn-1+4)%4;
     if(state==='howtoplay')howToPlayPage=Math.max(0,howToPlayPage-1);
+    if(state==='settings')settingsIdx=Math.max(0,settingsIdx-1);
+    if(state==='skins')skinScroll=Math.max(0,skinScroll-1);
   }
-  if(c==='ArrowDown'||c==='KeyS'){
-    e.preventDefault();
+  if(c==='ArrowDown'||c==='KeyS'){e.preventDefault();
     if(state==='play')nextDir={x:0,y:1};
-    if(state==='menu')selectedBtn=(selectedBtn+1)%3;
+    if(state==='menu')selectedBtn=(selectedBtn+1)%4;
     if(state==='howtoplay')howToPlayPage=Math.min(2,howToPlayPage+1);
+    if(state==='settings')settingsIdx=Math.min(4,settingsIdx+1);
+    if(state==='skins')skinScroll=Math.min(SKINS.length-1,skinScroll+1);
   }
-  if(c==='ArrowLeft'||c==='KeyA'){
-    e.preventDefault();
+  if(c==='ArrowLeft'||c==='KeyA'){e.preventDefault();
     if(state==='play')nextDir={x:-1,y:0};
     if(state==='levelup')selectedUpgrade=(selectedUpgrade-1+3)%3;
     if(state==='howtoplay')howToPlayPage=Math.max(0,howToPlayPage-1);
   }
-  if(c==='ArrowRight'||c==='KeyD'){
-    e.preventDefault();
+  if(c==='ArrowRight'||c==='KeyD'){e.preventDefault();
     if(state==='play')nextDir={x:1,y:0};
     if(state==='levelup')selectedUpgrade=(selectedUpgrade+1)%3;
     if(state==='howtoplay')howToPlayPage=Math.min(2,howToPlayPage+1);
   }
-  
-  // Enter/Space
+  if(c==='Space'&&state==='play'){
+    e.preventDefault();
+    if(dashCooldown<=0&&upgrades.includes('dash')){
+      dashCooldown=2;
+      for(let i=0;i<3;i++){const head=snake[0];const nx=head.x+dir.x,ny=head.y+dir.y;
+        if(nx>=0&&nx<COLS&&ny>=0&&ny<ROWS&&(!tiles[ny]||tiles[ny][nx]!==1)){
+          snake.unshift({x:nx,y:ny});snakeRender.unshift({x:snakeRender[0].x,y:snakeRender[0].y});
+          while(snake.length>3+level){snake.pop();snakeRender.pop();}
+        }
+      }
+      burst(snake[0].x*GS+GS/2,snake[0].y*GS+GS/2,'#00ffcc',8);playTone(600,0.1);
+    }
+  }
   if(c==='Enter'||c==='Space'){
-    e.preventDefault(); initAudio();
+    e.preventDefault();initAudio();
     if(state==='menu'){
       if(selectedBtn===0)startGame();
       else if(selectedBtn===1){state='howtoplay';howToPlayPage=0;}
-      else if(selectedBtn===2){state='settings';}
+      else if(selectedBtn===2){state='skins';skinScroll=0;}
+      else if(selectedBtn===3){state='settings';settingsIdx=0;}
     }
     if(state==='dead')startGame();
     if(state==='levelup'){applyUpgrade(upgradeChoices[selectedUpgrade]);state='play';}
     if(state==='howtoplay')state='menu';
     if(state==='settings')state='menu';
+    if(state==='skins'){
+      // Skin seç
+      const skin=SKINS[skinScroll];
+      if(saveData.unlockedSkins.includes(skin.id)){
+        saveData.equippedSkin=skin.id;writeSave();
+        notify('🎨 '+skin.name+' giyildi!','#aa44ff');
+      }else{
+        notify('🔒 Kilitli!','#ff4444');
+      }
+    }
   }
-  
-  // Escape
   if(c==='Escape'){
     if(state==='play')state='menu';
     else if(state==='dead')state='menu';
     else if(state==='levelup'){applyUpgrade(upgradeChoices[selectedUpgrade]);state='play';}
-    else if(state==='howtoplay')state='menu';
-    else if(state==='settings')state='menu';
+    else state='menu';
   }
-  
-  // Level up数字 tuşları
   if(state==='levelup'){
     if(c==='Digit1'){applyUpgrade(upgradeChoices[0]);state='play';}
     if(c==='Digit2'){applyUpgrade(upgradeChoices[1]);state='play';}
@@ -759,22 +791,18 @@ addEventListener('keydown',e=>{
   }
 });
 
-// Dokunmatik
 let touchStart=null;
 canvas.addEventListener('touchstart',e=>{e.preventDefault();initAudio();touchStart={x:e.touches[0].clientX,y:e.touches[0].clientY,time:Date.now()}},{passive:false});
 canvas.addEventListener('touchend',e=>{
-  e.preventDefault(); if(!touchStart)return;
+  e.preventDefault();if(!touchStart)return;
   const dx=e.changedTouches[0].clientX-touchStart.x,dy=e.changedTouches[0].clientY-touchStart.y,d=Math.hypot(dx,dy);
   if(d<15){
-    if(state==='menu'){if(selectedBtn===0)startGame();else if(selectedBtn===1){state='howtoplay';howToPlayPage=0;}else if(selectedBtn===2){state='settings';}}
+    if(state==='menu'){if(selectedBtn===0)startGame();else if(selectedBtn===1){state='howtoplay';}else if(selectedBtn===2){state='skins';}else if(selectedBtn===3){state='settings';}}
     if(state==='dead')startGame();
     if(state==='levelup'){applyUpgrade(upgradeChoices[selectedUpgrade]);state='play';}
-    if(state==='howtoplay'||state==='settings')state='menu';
-  }else if(d>30){
-    if(state==='play'){
-      if(Math.abs(dx)>Math.abs(dy))nextDir={x:dx>0?1:-1,y:0};
-      else nextDir={x:0,y:dy>0?1:-1};
-    }
+    if(state==='howtoplay'||state==='settings'||state==='skins')state='menu';
+  }else if(d>30&&state==='play'){
+    if(Math.abs(dx)>Math.abs(dy))nextDir={x:dx>0?1:-1,y:0};else nextDir={x:0,y:dy>0?1:-1};
   }
   touchStart=null;
 },{passive:false});
@@ -783,76 +811,56 @@ canvas.addEventListener('touchend',e=>{
 // ANA DÖNGÜ
 // =====================================================
 function startGame(){
-  state='play'; score=0; level=1; xp=0; xpNext=30;
-  combo=0; comboTimer=0; comboMult=1;
-  gameTime=0; upgrades=[]; enemies=[]; enemySpawnTimer=0;
-  bossActive=null; foods=[]; particles=[]; notifications=[];
-  startDelay=0.5; tileEffectTimer=0;
-  genMap(); initSnake();
+  state='play';score=0;level=1;xp=0;xpNext=30;
+  combo=0;comboTimer=0;comboMult=1;
+  gameTime=0;upgrades=[];enemies=[];enemySpawnTimer=0;
+  bossActive=null;foods=[];particles=[];notifications=[];
+  startDelay=0.5;tileEffectTimer=0;
+  currentBiome=0;
+  genMap();initSnake();
   for(let i=0;i<6;i++)spawnFood();
-  notify('🎮 Başla! WASD/Ok ile hareket','#00ffcc');
+  notify('🎮 Başla! WASD/Ok ile hareket',getC().accent);
 }
 
 let lastTime=0,fpsCounter=0,fpsTime=0,currentFps=0;
 
 function loop(now){
-  const dt=Math.min((now-lastTime)/1000,0.05);
-  lastTime=now;
+  const dt=Math.min((now-lastTime)/1000,0.05);lastTime=now;
+  fpsCounter++;if(now-fpsTime>=1000){currentFps=fpsCounter;fpsCounter=0;fpsTime=now;}
   
-  fpsCounter++;
-  if(now-fpsTime>=1000){currentFps=fpsCounter;fpsCounter=0;fpsTime=now;}
-  
-  // GÜNCELLE
   if(state==='play'){
     gameTime+=dt;
-    updateSnake(dt);
-    updateEnemies(dt);
-    updateBoss(dt);
-    foodTimer+=dt;
-    if(foodTimer>=2){foodTimer=0;spawnFood();}
-    
-    // Mıknatıs
+    updateSnake(dt);updateEnemies(dt);updateBoss(dt);
+    foodTimer+=dt;if(foodTimer>=2){foodTimer=0;spawnFood();}
     if(upgrades.includes('magnet')&&snake.length>0){
-      for(const f of foods){
-        if(!f.alive)continue;
-        const d=dist(snake[0].x,snake[0].y,f.x,f.y);
-        if(d<5&&d>0.5){const a=Math.atan2(snake[0].y-f.y,snake[0].x-f.x);f.x+=Math.cos(a)*0.15;f.y+=Math.sin(a)*0.15;}
-      }
+      for(const f of foods){if(!f.alive)continue;const d=dist(snake[0].x,snake[0].y,f.x,f.y);
+        if(d<5&&d>0.5){const a=Math.atan2(snake[0].y-f.y,snake[0].x-f.x);f.x+=Math.cos(a)*0.15;f.y+=Math.sin(a)*0.15;}}
     }
+    // Biome değişimi
+    const newBiome=Math.min(Math.floor(level/5),BIOMES.length-1);
+    if(newBiome!==currentBiome){currentBiome=newBiome;genMap();notify('🌍 '+getBiome().name,getBiome().accent);stats.biomesVisited=Math.max(stats.biomesVisited,currentBiome+1);checkAchievement('explorer');}
   }
   
-  updateParticles(dt);
-  updateEffects(dt);
-  updateNotifications(dt);
+  updateParticles(dt);updateEffects(dt);updateNotifications(dt);
   
-  // ÇİZ
-  ctx.save();
-  const s=Math.min(innerWidth/W,innerHeight/H);
-  ctx.setTransform(s,0,0,s,0,0);
-  
-  // Arka plan
-  ctx.fillStyle=C.bg; ctx.fillRect(0,0,W,H);
-  
-  // Grid
-  ctx.strokeStyle=C.grid; ctx.lineWidth=0.5;
+  ctx.save();const s=Math.min(innerWidth/W,innerHeight/H);ctx.setTransform(s,0,0,s,0,0);
+  ctx.fillStyle=getC().bg;ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle=getC().grid;ctx.lineWidth=0.5;
   for(let x=0;x<=W;x+=GS){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
   for(let y=0;y<=H;y+=GS){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
-  
   ctx.translate(shakeX,shakeY);
   
   switch(state){
-    case 'menu': drawMenu(); break;
-    case 'play': drawMap();drawFood();drawEnemies();drawBoss();drawSnake();drawParticles();drawHUD(); break;
-    case 'dead': drawMap();drawParticles();drawDead(); break;
-    case 'levelup': drawMap();drawFood();drawSnake();drawParticles();drawHUD();drawLevelUp(); break;
-    case 'howtoplay': drawHowToPlay(); break;
-    case 'settings': drawSettings(); break;
+    case'menu':drawMenu();break;
+    case'play':drawMap();drawFood();drawEnemies();drawBoss();drawSnake();drawParticles();drawHUD();drawMiniMap();break;
+    case'dead':drawMap();drawParticles();drawDead();break;
+    case'levelup':drawMap();drawFood();drawSnake();drawParticles();drawHUD();drawLevelUp();break;
+    case'howtoplay':drawHowToPlay();break;
+    case'settings':drawSettings();break;
+    case'skins':drawSkins();break;
   }
-  
   drawNotifications();
-  
   if(flashTimer>0&&flashColor){ctx.globalAlpha=flashTimer;ctx.fillStyle=flashColor;ctx.fillRect(-20,-20,W+40,H+40);ctx.globalAlpha=1;}
-  
   ctx.restore();
   requestAnimationFrame(loop);
 }
@@ -861,165 +869,191 @@ function loop(now){
 // MENÜ
 // =====================================================
 function drawMenu(){
-  ctx.save();
-  ctx.shadowColor=C.accent; ctx.shadowBlur=15;
-  ctx.fillStyle=C.accent; ctx.font='900 46px Orbitron'; ctx.textAlign='center';
-  ctx.fillText('SNAKE',W/2|0,100);
-  ctx.fillStyle=C.accent2; ctx.shadowColor=C.accent2;
-  ctx.fillText('EVOLUTION',W/2|0,145);
-  ctx.restore();
+  const C=getC();
+  ctx.save();ctx.shadowColor=C.accent;ctx.shadowBlur=15;
+  ctx.fillStyle=C.accent;ctx.font='900 46px Orbitron';ctx.textAlign='center';
+  ctx.fillText('SNAKE',W/2|0,90);
+  ctx.fillStyle=C.accent2;ctx.shadowColor=C.accent2;
+  ctx.fillText('EVOLUTION',W/2|0,135);ctx.restore();
   
   const lg=ctx.createLinearGradient(W/2-180,0,W/2+180,0);
-  lg.addColorStop(0,C.accent+'00'); lg.addColorStop(0.5,C.accent); lg.addColorStop(1,C.accent+'00');
-  ctx.strokeStyle=lg; ctx.lineWidth=1.5;
-  ctx.beginPath(); ctx.moveTo(W/2-180,165); ctx.lineTo(W/2+180,165); ctx.stroke();
+  lg.addColorStop(0,C.accent+'00');lg.addColorStop(0.5,C.accent);lg.addColorStop(1,C.accent+'00');
+  ctx.strokeStyle=lg;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(W/2-180,155);ctx.lineTo(W/2+180,155);ctx.stroke();
   
-  ctx.fillStyle='#55667788'; ctx.font='12px Rajdhani'; ctx.textAlign='center';
-  ctx.fillText('A ROGUELIKE SNAKE EXPERIENCE',W/2|0,180);
+  ctx.fillStyle='#55667788';ctx.font='12px Rajdhani';ctx.textAlign='center';
+  ctx.fillText('A ROGUELIKE SNAKE EXPERIENCE',W/2|0,170);
   
-  const btns=['▶  PLAY','📖  HOW TO PLAY','⚙  SETTINGS'];
-  const sy=230,sp=50,bw=260,bh=40;
-  for(let i=0;i<3;i++){
+  const btns=['▶  PLAY','📖  HOW TO PLAY','🎨  SKINS','⚙  SETTINGS'];
+  const sy=210,sp=46,bw=260,bh=38;
+  for(let i=0;i<4;i++){
     const y=sy+i*sp,sel=i===selectedBtn,bx=W/2-bw/2;
     ctx.save();
     if(sel){ctx.fillStyle=C.accent+'15';ctx.fillRect(bx,y-bh/2,bw,bh);ctx.fillStyle=C.accent;ctx.fillRect(bx,y-bh/2+4,2,bh-8);}
-    ctx.strokeStyle=sel?C.accent+'44':'#fff1'; ctx.lineWidth=1;
-    ctx.strokeRect(bx,y-bh/2,bw,bh);
-    ctx.fillStyle=sel?C.accent:'#667788';
-    ctx.font=(sel?'bold ':'')+'16px Rajdhani';
-    ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(btns[i],W/2|0,y|0);
-    ctx.restore();
+    ctx.strokeStyle=sel?C.accent+'44':'#fff1';ctx.lineWidth=1;ctx.strokeRect(bx,y-bh/2,bw,bh);
+    ctx.fillStyle=sel?C.accent:'#667788';ctx.font=(sel?'bold ':'')+'15px Rajdhani';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(btns[i],W/2|0,y|0);ctx.restore();
   }
   
-  ctx.fillStyle='#333344'; ctx.font='12px monospace'; ctx.textAlign='left'; ctx.fillText('v3.0',10,H-10);
-  ctx.fillStyle='#55667788'; ctx.font='12px Rajdhani'; ctx.textAlign='center';
-  ctx.fillText('↑↓ Navigate  •  ENTER Select',W/2|0,H-20);
+  // İstatistikler
+  ctx.fillStyle='#333344';ctx.font='11px monospace';ctx.textAlign='left';
+  ctx.fillText('High Score: '+saveData.highScore,10,H-30);
+  ctx.fillText('Games: '+saveData.totalGames+' | Coins: '+saveData.coins,10,H-18);
+  ctx.fillText('v4.0',10,H-6);
+  
+  ctx.fillStyle='#55667788';ctx.font='11px Rajdhani';ctx.textAlign='center';
+  ctx.fillText('↑↓ Navigate  •  ENTER Select',W/2|0,H-6);
 }
 
 // =====================================================
 // HOW TO PLAY
 // =====================================================
 function drawHowToPlay(){
-  ctx.fillStyle='rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
-  
+  ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);
   const pages=[
-    {title:'Kontroller',lines:['↑↓←→ veya WASD — Hareket','ENTER — Seçim / Başla','ESC — Geri / Menü','1-2-3 — Upgrade seç']},
-    {title:'Yemler',lines:['🍎 Elma — +1 puan, +1 uzunluk','⭐ Altın Elma — +5 puan','💎 Kristal — +20 XP','❤️ Kalp — +1 can','⏱️ Saat — Yavaşlatma','🧲 Mıknatıs — Yem çeker','✨ Yıldız — Dokunulmazlık','🪙 Coin — Puan']},
-    {title:'İpuçları',lines:['Yemleri ye, level atla','Her 5 levelde boss savaşı','Combo ile daha fazla puan','Düşmanlara dikkat!','Engeller hasar verir']}
+    {title:'Kontroller',lines:['↑↓←→ veya WASD — Hareket','SPACE — Dash (varsa)','ENTER — Seçim / Başla','ESC — Geri / Menü','1-2-3 — Upgrade seç']},
+    {title:'Yemler',lines:['🍎 Elma — +1 puan','⭐ Altın Elma — +5 puan','💎 Kristal — +25 XP','❤️ Kalp — +1 can','⏱️ Saat — Yavaşlatma','💣 Bomba — Hasar!','☠️ Zehir — Kuyruk kısaltır','🧲 Mıknatıs — Yem çeker','🍀 Şanslı — Rastgele','✨ Yıldız — Dokunulmaz','🪙 Coin — Para']},
+    {title:'İpuçları',lines:['Yemleri ye, level atla','Her 5 levelde boss savaşı','Combo ile daha fazla puan','Düşmanlara dikkat!','Engeller hasar verir (lava, elektrik)','Farklı biome lar farklı düşmanlar','Boss ları yen, efsanevi upgrade al']}
   ];
-  
   const p=pages[howToPlayPage]||pages[0];
-  
-  ctx.fillStyle=C.accent; ctx.font='bold 28px Orbitron'; ctx.textAlign='center';
-  ctx.fillText(p.title,W/2|0,80);
-  
-  ctx.fillStyle='#ccccee'; ctx.font='16px Rajdhani';
-  let y=130;
+  ctx.fillStyle=getC().accent;ctx.font='bold 28px Orbitron';ctx.textAlign='center';ctx.fillText(p.title,W/2|0,80);
+  ctx.fillStyle='#ccccee';ctx.font='16px Rajdhani';let y=130;
   for(const line of p.lines){ctx.fillText(line,W/2|0,y);y+=28;}
-  
-  ctx.fillStyle='#666677'; ctx.font='13px Rajdhani'; ctx.textAlign='center';
-  ctx.fillText('Sayfa '+(howToPlayPage+1)+'/3  •  ← → ile değiştir  •  ESC ile geri',W/2|0,H-30);
+  ctx.fillStyle='#666677';ctx.font='13px Rajdhani';ctx.textAlign='center';
+  ctx.fillText('Sayfa '+(howToPlayPage+1)+'/3  •  ← →  •  ESC',W/2|0,H-30);
 }
 
 // =====================================================
 // SETTINGS
 // =====================================================
 function drawSettings(){
-  ctx.fillStyle='rgba(0,0,0,0.85)'; ctx.fillRect(0,0,W,H);
-  
-  ctx.fillStyle=C.accent; ctx.font='bold 28px Orbitron'; ctx.textAlign='center';
-  ctx.fillText('SETTINGS',W/2|0,80);
-  
+  ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=getC().accent;ctx.font='bold 28px Orbitron';ctx.textAlign='center';ctx.fillText('AYARLAR',W/2|0,80);
   const items=[
-    'Ses: %100 (sabit)',
-    'Müzik: %100 (sabit)',
-    'Ekran Sarsıntısı: AÇIK',
-    'Parçacıklar: AÇIK',
-    'FPS Göster: KAPALI'
+    {label:'Ses',val:Math.round(saveData.settings.sound*100)+'%'},
+    {label:'Müzik',val:Math.round(saveData.settings.music*100)+'%'},
+    {label:'Ekran Sarsıntısı',val:saveData.settings.shake?'AÇIK':'KAPALI'},
+    {label:'Parçacıklar',val:saveData.settings.particles?'AÇIK':'KAPALI'},
+    {label:'Kaydı Sıfırla',val:''}
   ];
-  
-  ctx.fillStyle='#aaaacc'; ctx.font='16px Rajdhani';
   let y=140;
-  for(const item of items){ctx.fillText(item,W/2|0,y);y+=30;}
+  for(let i=0;i<items.length;i++){
+    const sel=i===settingsIdx;
+    ctx.fillStyle=sel?getC().accent:'#888899';ctx.font=(sel?'bold ':'')+'16px Rajdhani';ctx.textAlign='center';
+    ctx.fillText(items[i].label+': '+items[i].val,W/2|0,y);y+=30;
+  }
+  ctx.fillStyle='#666677';ctx.font='13px Rajdhani';ctx.textAlign='center';
+  ctx.fillText('↑↓ Seç  •  ← → Değiştir  •  ESC',W/2|0,H-30);
+}
+
+// =====================================================
+// SKİNLER
+// =====================================================
+let skinScroll=0;
+function drawSkins(){
+  ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=getC().accent;ctx.font='bold 28px Orbitron';ctx.textAlign='center';ctx.fillText('SKİNLER',W/2|0,50);
   
-  ctx.fillStyle='#666677'; ctx.font='13px Rajdhani'; ctx.textAlign='center';
-  ctx.fillText('ESC ile geri',W/2|0,H-30);
+  const startY=80;
+  for(let i=0;i<Math.min(8,SKINS.length);i++){
+    const idx=skinScroll+i;if(idx>=SKINS.length)break;
+    const skin=SKINS[idx];
+    const unlocked=saveData.unlockedSkins.includes(skin.id);
+    const equipped=saveData.equippedSkin===skin.id;
+    const y=startY+i*55;
+    
+    ctx.save();
+    ctx.fillStyle=equipped?getC().accent+'22':'#111122';
+    ctx.fillRect(100,y,600,45);
+    ctx.strokeStyle=unlocked?skin.glow+'66':'#333';ctx.lineWidth=1;
+    ctx.strokeRect(100,y,600,45);
+    
+    // Skin preview
+    const g=ctx.createRadialGradient(130,y+22,0,130,y+22,12);
+    g.addColorStop(0,skin.head);g.addColorStop(1,skin.body);
+    ctx.fillStyle=g;ctx.beginPath();ctx.arc(130,y+22,12,0,PI2);ctx.fill();
+    
+    ctx.fillStyle=unlocked?'#fff':'#555';ctx.font='bold 15px Rajdhani';ctx.textAlign='left';
+    ctx.fillText(skin.name,160,y+20);
+    ctx.fillStyle=unlocked?'#888':'#444';ctx.font='12px Rajdhani';
+    ctx.fillText(unlocked?(equipped?'✓ Giyili':'Kilidi Açık'):getSkinUnlockText(skin),160,y+36);
+    
+    ctx.restore();
+  }
+  
+  ctx.fillStyle='#666677';ctx.font='13px Rajdhani';ctx.textAlign='center';
+  ctx.fillText('↑↓ Seç  •  ENTER Giy  •  ESC',W/2|0,H-20);
+}
+
+function getSkinUnlockText(skin){
+  if(!skin.unlock)return'Ücretsiz';
+  if(skin.unlock.coins)return skin.unlock.coins+' Coin';
+  if(skin.unlock.gems)return skin.unlock.gems+' Gem';
+  if(skin.unlock.achievement){const a=ACHIEVEMENTS.find(a=>a.id===skin.unlock.achievement);return a?'Başarım: '+a.name:'Başarım';}
+  return'Kilitli';
 }
 
 // =====================================================
 // HUD
 // =====================================================
 function drawHUD(){
-  // Skor
-  ctx.fillStyle=C.accent; ctx.font='bold 20px monospace'; ctx.textAlign='left';
+  const C=getC();
+  ctx.fillStyle=C.accent;ctx.font='bold 20px monospace';ctx.textAlign='left';
   ctx.fillText('SKOR: '+score,15,25);
-  
-  // Level
-  ctx.fillStyle='#888899'; ctx.font='14px Rajdhani';
-  ctx.fillText('LVL '+level,15,45);
-  
-  // XP bar
+  ctx.fillStyle='#888899';ctx.font='14px Rajdhani';ctx.fillText('LVL '+level,15,45);
   const bw=100,bh=4,bx=55,by=40;
-  ctx.fillStyle='#1a1a2a'; ctx.fillRect(bx,by,bw,bh);
-  ctx.fillStyle=C.accent; ctx.fillRect(bx,by,bw*(xp/xpNext),bh);
-  
-  // Can
-  for(let i=0;i<maxHp;i++){
-    ctx.fillStyle=i<hp?'#ff44aa':'#333344';
-    ctx.font='13px Arial';
-    ctx.fillText('❤️',16+i*18,62);
-  }
-  
-  // Combo
-  if(combo>=3){
-    ctx.fillStyle='#ffaa00'; ctx.font='bold 20px Orbitron'; ctx.textAlign='center';
-    ctx.fillText('x'+combo+' COMBO',W/2|0,45);
-    if(comboMult>1){ctx.fillStyle='#fff';ctx.font='bold 13px Orbitron';ctx.fillText('('+comboMult+'x)',W/2|0,60);}
-  }
-  
-  // Boss HP
-  if(bossActive){
-    const bw2=W*0.5,bh2=8,bx2=(W-bw2)/2,by2=H-30;
-    ctx.fillStyle='#0a0a1a'; ctx.fillRect(bx2-1,by2-1,bw2+2,bh2+2);
-    ctx.fillStyle='#ff0044'; ctx.fillRect(bx2,by2,bw2*(bossActive.hp/bossActive.maxHp),bh2);
-  }
-  
-  // FPS
-  ctx.fillStyle='#333'; ctx.font='10px monospace'; ctx.textAlign='right';
-  ctx.fillText(currentFps+' FPS',W-10,14);
+  ctx.fillStyle='#1a1a2a';ctx.fillRect(bx,by,bw,bh);
+  ctx.fillStyle=C.accent;ctx.fillRect(bx,by,bw*(xp/xpNext),bh);
+  for(let i=0;i<maxHp;i++){ctx.fillStyle=i<hp?'#ff44aa':'#333344';ctx.font='13px Arial';ctx.fillText('❤️',16+i*18,62);}
+  if(combo>=3){ctx.fillStyle='#ffaa00';ctx.font='bold 20px Orbitron';ctx.textAlign='center';ctx.fillText('x'+combo+' COMBO',W/2|0,45);if(comboMult>1){ctx.fillStyle='#fff';ctx.font='bold 13px Orbitron';ctx.fillText('('+comboMult+'x)',W/2|0,60);}}
+  if(bossActive){const bw2=W*0.5,bh2=8,bx2=(W-bw2)/2,by2=H-30;ctx.fillStyle='#0a0a1a';ctx.fillRect(bx2-1,by2-1,bw2+2,bh2+2);ctx.fillStyle='#ff0044';ctx.fillRect(bx2,by2,bw2*(bossActive.hp/bossActive.maxHp),bh2);}
+  ctx.fillStyle='#333';ctx.font='10px monospace';ctx.textAlign='right';ctx.fillText(currentFps+' FPS',W-10,14);
+}
+
+// =====================================================
+// MİNİ HARİTA
+// =====================================================
+function drawMiniMap(){
+  const mw=60,mh=45,mx=W-mw-10,my=H-mh-10;
+  const sx=mw/COLS,sy=mh/ROWS;
+  ctx.globalAlpha=0.4;
+  ctx.fillStyle='#0a0a1a';ctx.fillRect(mx,my,mw,mh);
+  ctx.fillStyle=getBiome().accent;
+  if(snake.length>0){ctx.fillRect(mx+snake[0].x*sx,my+snake[0].y*sy,2,2);}
+  ctx.fillStyle='#ff4444';
+  for(const e of enemies){if(e.alive)ctx.fillRect(mx+e.x*sx,my+e.y*sy,1.5,1.5);}
+  ctx.fillStyle='#ffaa00';
+  for(const f of foods){if(f.alive)ctx.fillRect(mx+f.x*sx,my+f.y*sy,1.5,1.5);}
+  ctx.globalAlpha=1;
 }
 
 // =====================================================
 // LEVEL UP
 // =====================================================
 function drawLevelUp(){
-  ctx.fillStyle='rgba(0,0,0,0.7)'; ctx.fillRect(0,0,W,H);
-  ctx.save(); ctx.shadowColor='#ffaa00'; ctx.shadowBlur=12;
-  ctx.fillStyle='#ffaa00'; ctx.font='bold 30px Orbitron'; ctx.textAlign='center';
-  ctx.fillText('LEVEL UP!',W/2|0,90); ctx.restore();
-  
+  ctx.fillStyle='rgba(0,0,0,0.7)';ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.shadowColor='#ffaa00';ctx.shadowBlur=12;
+  ctx.fillStyle='#ffaa00';ctx.font='bold 30px Orbitron';ctx.textAlign='center';
+  ctx.fillText('LEVEL UP!',W/2|0,90);ctx.restore();
   const cw=170,ch=190,sp=25,tw=3*cw+2*sp,sx=(W-tw)/2;
   for(let i=0;i<3;i++){
-    const u=upgradeChoices[i]; if(!u)continue;
+    const u=upgradeChoices[i];if(!u)continue;
     const x=sx+i*(cw+sp),y=130,sel=i===selectedUpgrade;
     ctx.save();
-    
+    const rarityColor={common:'#888',uncommon:'#00ff88',rare:'#0088ff',epic:'#aa00ff',legendary:'#ffaa00'}[u.rarity]||'#888';
     const cg=ctx.createLinearGradient(x,y,x,y+ch);
-    cg.addColorStop(0,sel?'#1a1a3a':'#0e0e1e'); cg.addColorStop(1,sel?'#0a0a2a':'#060612');
-    ctx.fillStyle=cg; ctx.fillRect(x,y,cw,ch);
-    ctx.strokeStyle=sel?u.color+'88':'#fff1'; ctx.lineWidth=sel?2:1; ctx.strokeRect(x,y,cw,ch);
-    
-    ctx.fillStyle=u.color+'22'; ctx.fillRect(x,y,cw,22);
-    ctx.font='32px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillText(u.icon,x+cw/2|0,y+55|0);
-    ctx.fillStyle='#fff'; ctx.font='bold 13px Orbitron'; ctx.fillText(u.name,x+cw/2|0,y+85|0);
-    ctx.fillStyle='#b0b0cc'; ctx.font='12px Rajdhani'; ctx.fillText(u.desc,x+cw/2|0,y+105|0);
-    ctx.fillStyle=sel?'#fff':'#555566'; ctx.font='bold 12px monospace'; ctx.fillText('['+(i+1)+']',x+cw/2|0,y+ch-8|0);
+    cg.addColorStop(0,sel?'#1a1a3a':'#0e0e1e');cg.addColorStop(1,sel?'#0a0a2a':'#060612');
+    ctx.fillStyle=cg;ctx.fillRect(x,y,cw,ch);
+    ctx.strokeStyle=sel?rarityColor+'88':'#fff1';ctx.lineWidth=sel?2:1;ctx.strokeRect(x,y,cw,ch);
+    ctx.fillStyle=rarityColor+'22';ctx.fillRect(x,y,cw,22);
+    ctx.fillStyle=rarityColor;ctx.font='bold 9px Orbitron';ctx.textAlign='center';ctx.fillText(u.rarity.toUpperCase(),x+cw/2|0,y+14|0);
+    ctx.font='32px Arial';ctx.textBaseline='middle';ctx.fillText(u.icon,x+cw/2|0,y+55|0);
+    ctx.fillStyle='#fff';ctx.font='bold 13px Orbitron';ctx.fillText(u.name,x+cw/2|0,y+85|0);
+    ctx.fillStyle='#b0b0cc';ctx.font='12px Rajdhani';ctx.fillText(u.desc,x+cw/2|0,y+105|0);
+    ctx.fillStyle=sel?'#fff':'#555566';ctx.font='bold 12px monospace';ctx.fillText('['+(i+1)+']',x+cw/2|0,y+ch-8|0);
     ctx.restore();
   }
-  ctx.fillStyle='#888899'; ctx.font='12px Rajdhani'; ctx.textAlign='center';
-  ctx.fillText('1-3 ile seç veya tıkla',W/2|0,H-40);
+  ctx.fillStyle='#888899';ctx.font='12px Rajdhani';ctx.textAlign='center';
+  ctx.fillText('1-3 ile seç',W/2|0,H-40);
 }
 
 // =====================================================
@@ -1028,29 +1062,18 @@ function drawLevelUp(){
 function drawDead(){
   deadTimer+=0.016;
   const og=ctx.createRadialGradient(W/2,H/3,0,W/2,H/2,H);
-  og.addColorStop(0,'rgba(20,0,0,0.85)'); og.addColorStop(1,'rgba(0,0,0,0.95)');
-  ctx.fillStyle=og; ctx.fillRect(0,0,W,H);
-  
-  ctx.save(); ctx.shadowColor='#ff0044'; ctx.shadowBlur=12;
-  ctx.fillStyle='#ff0044'; ctx.font='900 38px Orbitron'; ctx.textAlign='center';
-  ctx.fillText('GAME OVER',W/2|0,100); ctx.restore();
-  
-  const items=[{l:'SKOR',v:score,c:C.accent},{l:'SÜRE',v:Math.floor(gameTime)+'s',c:'#888899'},{l:'LEVEL',v:level,c:'#ffaa00'},{l:'COMBO',v:'x'+combo,c:'#ffaa00'}];
+  og.addColorStop(0,'rgba(20,0,0,0.85)');og.addColorStop(1,'rgba(0,0,0,0.95)');
+  ctx.fillStyle=og;ctx.fillRect(0,0,W,H);
+  ctx.save();ctx.shadowColor='#ff0044';ctx.shadowBlur=12;
+  ctx.fillStyle='#ff0044';ctx.font='900 38px Orbitron';ctx.textAlign='center';
+  ctx.fillText('GAME OVER',W/2|0,100);ctx.restore();
+  const items=[{l:'SKOR',v:score,c:getBiome().accent},{l:'SÜRE',v:Math.floor(gameTime)+'s',c:'#888899'},{l:'LEVEL',v:level,c:'#ffaa00'},{l:'COMBO',v:'x'+combo,c:'#ffaa00'},{l:'BOSS',v:stats.bossKills,c:'#ff4488'}];
   let y=150;
-  for(const it of items){
-    ctx.fillStyle='#556677'; ctx.font='11px Orbitron'; ctx.textAlign='right'; ctx.fillText(it.l,W/2-15,y);
-    ctx.fillStyle=it.c; ctx.font='bold 15px monospace'; ctx.textAlign='left'; ctx.fillText(''+it.v,W/2+15,y);
-    y+=25;
-  }
-  
-  y+=10; ctx.fillStyle='#fff'; ctx.font='bold 13px Orbitron'; ctx.textAlign='center'; ctx.fillText('ÖDÜLLER',W/2|0,y);
-  y+=20; ctx.fillStyle=C.accent; ctx.font='bold 15px monospace';
-  ctx.fillText('+'+level*10+' XP  +'+(score*0.05|0)+' Coin',W/2|0,y|0);
-  
-  y=H-80;
-  ctx.fillStyle=C.accent; ctx.font='bold 16px Rajdhani'; ctx.textAlign='center';
-  ctx.fillText('▶ TEKRAR OYNA (ENTER)',W/2|0,y|0);
-  ctx.fillStyle='#666677'; ctx.fillText('◀ ANA MENÜ (ESC)',W/2|0,y+25|0);
+  for(const it of items){ctx.fillStyle='#556677';ctx.font='11px Orbitron';ctx.textAlign='right';ctx.fillText(it.l,W/2-15,y);ctx.fillStyle=it.c;ctx.font='bold 15px monospace';ctx.textAlign='left';ctx.fillText(''+it.v,W/2+15,y);y+=25;}
+  y+=10;ctx.fillStyle='#fff';ctx.font='bold 13px Orbitron';ctx.textAlign='center';ctx.fillText('ÖDÜLLER',W/2|0,y);
+  y+=20;ctx.fillStyle=getBiome().accent;ctx.font='bold 15px monospace';ctx.fillText('+'+level*10+' XP  +'+(score*0.05|0)+' Coin',W/2|0,y|0);
+  y=H-80;ctx.fillStyle=getBiome().accent;ctx.font='bold 16px Rajdhani';ctx.textAlign='center';ctx.fillText('▶ TEKRAR OYNA (ENTER)',W/2|0,y|0);
+  ctx.fillStyle='#666677';ctx.fillText('◀ ANA MENÜ (ESC)',W/2|0,y+25|0);
 }
 
 // =====================================================
