@@ -90,6 +90,12 @@ window.G = window.G || {};
             G.Save.data.equippedSkin = skin.id;
             G.Save.write();
             E.notify('🎨 ' + skin.name + ' giyildi!', '#aa44ff');
+          } else if (skin.unlock && skin.unlock.coins && G.Save.data.coins >= skin.unlock.coins) {
+            G.Save.data.coins -= skin.unlock.coins;
+            G.Save.data.unlockedSkins.push(skin.id);
+            G.Save.data.equippedSkin = skin.id;
+            G.Save.write();
+            E.notify('🎨 ' + skin.name + ' açıldı ve giyildi!', '#aa44ff');
           } else {
             E.notify('🔒 Kilitli!', '#ff4444');
           }

@@ -82,21 +82,18 @@ G.Enemies = {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (e.ai === 'chase' && dist < 15) {
-          // Chase: move toward player (but not too aggressively)
           if (Math.abs(dx) > Math.abs(dy)) {
             e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
           } else {
             e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
           }
         } else if (e.ai === 'wander') {
-          // Wander: random direction changes
           e.wanderTimer -= 1;
           if (e.wanderTimer <= 0) {
             e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
             e.wanderTimer = G.Utils.rndInt(3, 8);
           }
         } else if (e.ai === 'ghost') {
-          // Ghost: slow chase, can pass through walls
           if (Math.random() < 0.5) {
             if (Math.abs(dx) > Math.abs(dy)) {
               e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
@@ -104,6 +101,9 @@ G.Enemies = {
               e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
             }
           }
+        } else if (e.ai === 'turret') {
+          // Turret: don't move, but shoot laser periodically
+          // Handled in draw (visual laser)
         }
 
         // Move

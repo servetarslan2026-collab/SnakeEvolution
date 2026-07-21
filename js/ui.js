@@ -249,7 +249,6 @@ G.UI = {
 
   drawDead(ctx) {
     const E = G.Engine;
-    E.deadTimer += 0.016;
 
     const og = ctx.createRadialGradient(E.W / 2, E.H / 3, 0, E.W / 2, E.H / 2, E.H);
     og.addColorStop(0, 'rgba(20,0,0,0.85)');
@@ -408,7 +407,11 @@ G.UI = {
       ctx.fillText(skin.name, 160, y + 20);
       ctx.fillStyle = unlocked ? '#888' : '#444';
       ctx.font = '12px Rajdhani';
-      ctx.fillText(unlocked ? (equipped ? '✓ Giyili' : 'Kilidi Açık') : 'Kilitli', 160, y + 36);
+      let unlockText = 'Kilitli';
+      if (unlocked) unlockText = equipped ? '✓ Giyili' : 'Kilidi Açık';
+      else if (skin.unlock && skin.unlock.coins) unlockText = '🔒 ' + skin.unlock.coins + ' Coin';
+      else if (skin.unlock && skin.unlock.achievement) unlockText = '🔒 Başarım';
+      ctx.fillText(unlockText, 160, y + 36);
       ctx.restore();
     }
 

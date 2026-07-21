@@ -45,6 +45,11 @@ G.Stats = {
     G.Save.data.totalTime += gameTime;
     if (score > G.Save.data.highScore) G.Save.data.highScore = score;
     G.Save.data.coins += Math.floor(score * 0.05);
+    G.Save.data.totalCoins += Math.floor(score * 0.05);
+    if (this.session.maxCombo > (G.Save.data.maxCombo || 0)) G.Save.data.maxCombo = this.session.maxCombo;
+    if (this.session.bossKills > (G.Save.data.bossKills || 0)) G.Save.data.bossKills = this.session.bossKills;
+    if (gameTime > (G.Save.data.longestTime || 0)) G.Save.data.longestTime = gameTime;
+    if (level > (G.Save.data.maxLevel || 0)) G.Save.data.maxLevel = level;
     G.Save.autoSave();
     this.checkAchievements();
   },
@@ -57,6 +62,15 @@ G.Stats = {
         s.achievements.push(ach.id);
         G.Engine.notify('🏆 ' + ach.name + ': ' + ach.desc, '#ffaa00');
         G.Audio.playTone(800, 0.15);
+
+        // Skin unlock check
+        for (const skin of G.Config.SKINS) {
+          if (skin.unlock && skin.unlock.achievement === ach.id && !s.unlockedSkins.includes(skin.id)) {
+            s.unlockedSkins.push(skin.id);
+            G.Engine.notify('🎨 Yeni Skin: ' + skin.name, '#aa44ff');
+          }
+        }
+
         G.Save.write();
       }
     }

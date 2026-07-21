@@ -41,10 +41,50 @@ G.Upgrades = {
       case 'shield': S.invTimer = 3; break;
       case 'armor': S.invTimer = 2; break;
       case 'dash': E.notify('💨 Dash: SPACE', '#00ffcc'); break;
-      case 'score2x': break; // Handled in collectFood
-      case 'xp2x': break; // Handled in collectFood
-      case 'magnet': break; // Handled in food.update
+      case 'score2x': break;
+      case 'xp2x': break;
+      case 'magnet': break;
       case 'secondLife': S.secondLifeUsed = false; break;
+      case 'regen': break; // Handled in snake update
+      case 'fireTail': break; // Visual effect
+      case 'iceTail': break; // Visual effect
+      case 'poisonTail': break; // Visual effect
+      case 'elecTail': break; // Visual effect
+      case 'thickTail': break; // Visual effect
+      case 'chainTail': break; // Visual effect
+      case 'explodingTail': break; // Visual effect
+      case 'golden': break; // Handled in collectFood
+      case 'heartFind': break; // Handled in collectFood
+      case 'luckyDrop': break; // Handled in collectFood
+      case 'critical': break; // Handled in collectFood
+      case 'ghost': S.activateInvincible(5); E.notify('👻 Ghost Mode!', '#aaaaff'); break;
+      case 'teleport': {
+        const pos = G.Map.getRandomEmpty();
+        S.segments = [{ x: pos.x, y: pos.y }];
+        S.renderPos = [{ x: pos.x, y: pos.y }];
+        E.notify('🌀 Teleport!', '#aa00ff');
+        break;
+      }
+      case 'autoCollect': break; // Handled in food update
+      case 'phase': S.activateInvincible(3); E.notify('✨ Phase Shift!', '#aa44ff'); break;
+      case 'momentum': break; // Handled in snake update
+      case 'blastGuard': break; // Handled in takeDamage
+      case 'foodBoom': break; // Handled in collectFood
+      case 'drone': break; // Visual effect
+      case 'turbo': S.speed *= 1.5; setTimeout(() => { S.speed /= 1.5; }, 3000); E.notify('🚀 Turbo!', '#ffaa00'); break;
+      case 'clone': break; // Visual effect
+      case 'timeFreeze': {
+        // Freeze all enemies for 5 seconds
+        for (const e of G.Enemies.list) {
+          e.speed = 0;
+          setTimeout(() => { e.speed = G.Config.ENEMY_TYPES.find(t => t.type === e.type)?.speed || 1; }, 5000);
+        }
+        E.notify('⏸️ Time Freeze!', '#ffffff');
+        break;
+      }
+      case 'chainCombo': G.Combo.timer += 1; break;
+      case 'lucky': break; // Handled in random functions
+      case 'vortex': break; // Handled in food update
       default: break;
     }
 
