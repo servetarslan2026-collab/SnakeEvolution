@@ -839,7 +839,7 @@ G.Player = {
   },
 
   /**
-   * Profesyonel yılan çizimi
+   * Yılan çizimi (basit, güvenilir, görsel)
    */
   draw(ctx) {
     if (!this._alive) return;
@@ -847,184 +847,143 @@ G.Player = {
     const gs = G.Config.GRID_SIZE;
     const skin = G.Skin.getSkin(this._skinId);
     const now = Date.now();
-    const segments = this._segments;
-    const len = segments.length;
+    const segs = this._segments;
+    const len = segs.length;
     if (len === 0) return;
 
-    // --- Clone Snake (daha iyi) ---
-    if (this._clone && this._clone.segments) {
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      for (let ci = 0; ci < this._clone.segments.length; ci++) {
-        const cs = this._clone.segments[ci];
-        const ccx = cs.x * gs + gs / 2;
-        const ccy = cs.y * gs + gs / 2;
-        const csize = (gs / 2 - 3) * (1 - ci / this._clone.segments.length * 0.3);
-        ctx.fillStyle = ci === 0 ? skin.headColor : skin.bodyColor;
-        ctx.globalAlpha = 0.4 - ci * 0.05;
-        ctx.beginPath();
-        ctx.arc(ccx, ccy, csize, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    // --- Mini Drone (daha iyi) ---
-    if (this._droneActive) {
-      const head = this.getHead();
-      const dcx = head.x * gs + gs / 2 + Math.cos(this._droneAngle) * gs * 1.8;
-      const dcy = head.y * gs + gs / 2 + Math.sin(this._droneAngle) * gs * 1.8;
-      ctx.save();
-      // Drone gövdesi
-      const dg = ctx.createRadialGradient(dcx, dcy, 0, dcx, dcy, 6);
-      dg.addColorStop(0, '#aaccff');
-      dg.addColorStop(1, '#4488ff');
-      ctx.fillStyle = dg;
-      ctx.beginPath();
-      ctx.arc(dcx, dcy, 6, 0, Math.PI * 2);
-      ctx.fill();
-      // Kanatlar (dönen)
-      ctx.strokeStyle = '#88aaff';
-      ctx.lineWidth = 1.5;
-      const wingAngle = now / 80;
-      for (let w = 0; w < 4; w++) {
-        const wa = wingAngle + w * Math.PI / 2;
-        ctx.beginPath();
-        ctx.moveTo(dcx, dcy);
-        ctx.lineTo(dcx + Math.cos(wa) * 10, dcy + Math.sin(wa) * 4);
-        ctx.stroke();
-      }
-      // Glow
-      if (G.Save.get('settings.glow') !== false) {
-        ctx.shadowColor = '#4488ff';
-        ctx.shadowBlur = 12;
-        ctx.fillStyle = '#4488ff44';
-        ctx.beginPath();
-        ctx.arc(dcx, dcy, 8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    // --- Kuyruk izi (trail) ---
-    if (G.Save.get('settings.particles') !== false && len > 2) {
-      const tail = segments[len - 1];
-      if (Math.random() < 0.4) {
-        G.Particles.trail(tail.x * gs + gs / 2, tail.y * gs + gs / 2, skin.glow || '#00ffcc');
+    // Kuyruk efektleri
+    if (len > 1) {
+      const tail = segs[len - 1];
+      const tx = tail.x * gs + gs / 2;
+      const ty = tail.y * gs + gs / 2;
+      if (this._modifiers.tailType === 'fire' && Math.random() < 0.5) {
+        G.Particles.emit({x: tx, y: ty, vx: (Math.random()-0.5)*30, vy: -20-Math.random()*40, life: 0.3, size: 3, endSize: 0, color: '#ff4400', alpha: 0.8, endAlpha: 0, shape: 'dot'});
+      } else if (this._modifiers.tailType === 'ice' && Math.random() < 0.3) {
+        G.Particles.emit({x: tx, y: ty, vx: (Math.random()-0.5)*20, vy: -10-Math.random()*20, life: 0.4, size: 2, endSize: 0, color: '#00ccff', alpha: 0.7, endAlpha: 0, shape: 'star'});
+      } else if (this._modifiers.tailType === 'electric' && Math.random() < 0.4) {
+        G.Particles.emit({x: tx, y: ty, vx: (Math.random()-0.5)*50, vy: (Math.random()-0.5)*50, life: 0.15, size: 1, endSize: 0, color: '#ffff00', alpha: 1, endAlpha: 0, shape: 'line'});
       }
     }
 
-    // --- Segment bağlantı çizgisi ---
-    ctx.save();
-    ctx.strokeStyle = skin.bodyColor || '#00aa88';
-    ctx.lineWidth = gs * 0.35;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.moveTo(segments[0].x * gs + gs / 2, segments[0].y * gs + gs / 2);
-    for (let i = 1; i < len; i++) {
-      ctx.lineTo(segments[i].x * gs + gs / 2, segments[i].y * gs + gs / 2);
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    // --- Segmentler (kuyruktan kafaya) ---
+    // Segmentler (kuyruktan kafaya)
     for (let i = len - 1; i >= 0; i--) {
-      const seg = segments[i];
-      const px = seg.x * gs;
-      const py = seg.y * gs;
+      const seg = segs[i];
+      const px = seg.x * gs + gs / 2;
+      const py = seg.y * gs + gs / 2;
       const segT = i / Math.max(1, len - 1);
-      const scale = 1 - segT * 0.25;
-      const cx = px + gs / 2;
-      const cy = py + gs / 2;
-      const size = (gs / 2 - 1) * scale;
+      const scale = 1 - segT * 0.3;
+      const size = (gs / 2 - 2) * scale;
 
       ctx.save();
 
       // Invincible yanıp sönme
-      if (this._invincible && Math.floor(now / 80) % 3 === 0) {
-        ctx.globalAlpha = 0.3;
+      if (this._invincible && Math.floor(now / 100) % 2 === 0) {
+        ctx.globalAlpha = 0.4;
       }
-
-      // Ghost saydamlık
       if (this._ghost) {
         ctx.globalAlpha = 0.35;
       }
 
       if (i === 0) {
-        // ==================== KAFA ====================
+        // ===== KAFA =====
         // Glow
-        if (G.Save.get('settings.glow') !== false) {
-          ctx.shadowColor = skin.glow || '#00ffcc';
-          ctx.shadowBlur = 18;
-        }
+        ctx.shadowColor = skin.glow || '#00ffcc';
+        ctx.shadowBlur = 15;
 
-        // Kafa gövdesi (daha iyi gradient)
-        const hg = ctx.createRadialGradient(cx - 3, cy - 3, 1, cx, cy, size + 1);
-        hg.addColorStop(0, this._lightenColor(skin.headColor, 50));
-        hg.addColorStop(0.6, skin.headColor);
-        hg.addColorStop(1, this._darkenColor(skin.headColor, 30));
+        // Kafa gövdesi (daire, gradient)
+        const hg = ctx.createRadialGradient(px - 3, py - 3, 1, px, py, size + 2);
+        hg.addColorStop(0, this._lighten(skin.headColor, 60));
+        hg.addColorStop(0.7, skin.headColor);
+        hg.addColorStop(1, this._darken(skin.headColor, 40));
         ctx.fillStyle = hg;
         ctx.beginPath();
-        ctx.arc(cx, cy, size + 1, 0, Math.PI * 2);
+        ctx.arc(px, py, size + 2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Kafa deseni (üst highlight)
-        const hlg = ctx.createRadialGradient(cx - 4, cy - 4, 0, cx, cy, size);
-        hlg.addColorStop(0, 'rgba(255,255,255,0.35)');
-        hlg.addColorStop(0.4, 'rgba(255,255,255,0.08)');
-        hlg.addColorStop(1, 'rgba(255,255,255,0)');
-        ctx.fillStyle = hlg;
+        // Highlight
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.beginPath();
-        ctx.arc(cx, cy, size + 1, 0, Math.PI * 2);
+        ctx.arc(px - 4, py - 4, size * 0.35, 0, Math.PI * 2);
         ctx.fill();
 
-        // Gözler (daha iyi)
-        this._drawEyes(ctx, cx, cy, size, skin);
+        // Gözler
+        const dir = this._direction;
+        const eyeOff = size * 0.35;
+        const eyeSize = size * 0.22;
+        const lx = px + dir.x * 3 - dir.y * eyeOff;
+        const ly = py + dir.y * 3 + dir.x * eyeOff;
+        const rx = px + dir.x * 3 + dir.y * eyeOff;
+        const ry = py + dir.y * 3 - dir.x * eyeOff;
 
-        // Glow canvas
-        if (G.Save.get('settings.glow') !== false) {
-          const glowCtx = G.Renderer.getGlowCtx();
-          glowCtx.save();
-          glowCtx.shadowColor = skin.glow || '#00ffcc';
-          glowCtx.shadowBlur = 25;
-          glowCtx.fillStyle = skin.glow || '#00ffcc';
-          glowCtx.globalAlpha = 0.6;
-          glowCtx.beginPath();
-          glowCtx.arc(cx, cy, size * 0.7, 0, Math.PI * 2);
-          glowCtx.fill();
-          glowCtx.restore();
-        }
+        // Göz beyazı
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(lx, ly, eyeSize + 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rx, ry, eyeSize + 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Iris
+        ctx.fillStyle = skin.glow || '#00ffcc';
+        ctx.beginPath();
+        ctx.arc(lx + dir.x * 1.5, ly + dir.y * 1.5, eyeSize * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rx + dir.x * 1.5, ry + dir.y * 1.5, eyeSize * 0.7, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pupil
+        ctx.fillStyle = '#000';
+        ctx.beginPath();
+        ctx.arc(lx + dir.x * 2.5, ly + dir.y * 2.5, eyeSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rx + dir.x * 2.5, ry + dir.y * 2.5, eyeSize * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Göz highlight
+        ctx.fillStyle = 'rgba(255,255,255,0.8)';
+        ctx.beginPath();
+        ctx.arc(lx - 1, ly - 1, eyeSize * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(rx - 1, ry - 1, eyeSize * 0.2, 0, Math.PI * 2);
+        ctx.fill();
 
       } else {
-        // ==================== GÖVDE ====================
-        // Gövde gradient
-        const bg = ctx.createRadialGradient(cx - 2, cy - 2, 0, cx, cy, size);
-        bg.addColorStop(0, this._lightenColor(skin.bodyColor, 20));
-        bg.addColorStop(1, skin.bodyColor || '#00aa88');
+        // ===== GÖVDE =====
+        ctx.shadowColor = skin.glow || '#00ffcc';
+        ctx.shadowBlur = 6;
+
+        // Gövde (daire, gradient)
+        const bg = ctx.createRadialGradient(px - 2, py - 2, 0, px, py, size);
+        bg.addColorStop(0, this._lighten(skin.bodyColor, 30));
+        bg.addColorStop(1, skin.bodyColor);
         ctx.fillStyle = bg;
         ctx.beginPath();
-        ctx.arc(cx, cy, size * 0.85, 0, Math.PI * 2);
+        ctx.arc(px, py, size, 0, Math.PI * 2);
         ctx.fill();
 
-        // Segment deseni (her 2. segmentte parlak nokta)
+        // Segment deseni
+        ctx.shadowBlur = 0;
         if (i % 2 === 0) {
-          ctx.fillStyle = 'rgba(255,255,255,0.12)';
+          ctx.fillStyle = 'rgba(255,255,255,0.1)';
           ctx.beginPath();
-          ctx.arc(cx - 1, cy - 1, size * 0.35, 0, Math.PI * 2);
+          ctx.arc(px - 1, py - 1, size * 0.4, 0, Math.PI * 2);
           ctx.fill();
         }
 
-        // Kuyruk ucu (son segment)
+        // Kuyruk ucu
         if (i === len - 1) {
-          const prevSeg = segments[Math.max(0, i - 1)];
-          const angle = G.Utils.angle(seg.x, seg.y, prevSeg.x, prevSeg.y);
-          ctx.fillStyle = this._darkenColor(skin.bodyColor, 20);
+          const prev = segs[Math.max(0, i - 1)];
+          const angle = Math.atan2(prev.y - seg.y, prev.x - seg.x);
+          ctx.fillStyle = this._darken(skin.bodyColor, 30);
           ctx.beginPath();
-          ctx.moveTo(cx + Math.cos(angle) * size * 0.8, cy + Math.sin(angle) * size * 0.8);
-          ctx.lineTo(cx + Math.cos(angle + 2.3) * size * 0.5, cy + Math.sin(angle + 2.3) * size * 0.5);
-          ctx.lineTo(cx + Math.cos(angle - 2.3) * size * 0.5, cy + Math.sin(angle - 2.3) * size * 0.5);
+          ctx.moveTo(px + Math.cos(angle) * size, py + Math.sin(angle) * size);
+          ctx.lineTo(px + Math.cos(angle + 2.3) * size * 0.5, py + Math.sin(angle + 2.3) * size * 0.5);
+          ctx.lineTo(px + Math.cos(angle - 2.3) * size * 0.5, py + Math.sin(angle - 2.3) * size * 0.5);
           ctx.closePath();
           ctx.fill();
         }
@@ -1032,72 +991,9 @@ G.Player = {
 
       ctx.restore();
     }
-
-    // --- Kuyruk efekti (upgrade göre) ---
-    if (len > 1) {
-      const tail = segments[len - 1];
-      const tcx = tail.x * gs + gs / 2;
-      const tcy = tail.y * gs + gs / 2;
-      if (this._modifiers.tailType === 'fire') {
-        if (Math.random() < 0.5) G.Particles.emit({x: tcx, y: tcy, vx: (Math.random()-0.5)*30, vy: -20-Math.random()*40, life: 0.3, size: 3, endSize: 0, color: '#ff4400', alpha: 0.8, endAlpha: 0, shape: 'dot'});
-      } else if (this._modifiers.tailType === 'ice') {
-        if (Math.random() < 0.3) G.Particles.emit({x: tcx, y: tcy, vx: (Math.random()-0.5)*20, vy: -10-Math.random()*20, life: 0.4, size: 2, endSize: 0, color: '#00ccff', alpha: 0.7, endAlpha: 0, shape: 'star'});
-      } else if (this._modifiers.tailType === 'poison') {
-        if (Math.random() < 0.3) G.Particles.emit({x: tcx, y: tcy, vx: (Math.random()-0.5)*15, vy: -5-Math.random()*15, life: 0.5, size: 2, endSize: 4, color: '#44ff00', alpha: 0.5, endAlpha: 0, shape: 'dot'});
-      } else if (this._modifiers.tailType === 'electric') {
-        if (Math.random() < 0.4) G.Particles.emit({x: tcx, y: tcy, vx: (Math.random()-0.5)*50, vy: (Math.random()-0.5)*50, life: 0.15, size: 1, endSize: 0, color: '#ffff00', alpha: 1, endAlpha: 0, shape: 'line'});
-      }
-    }
   },
 
-  _drawEyes(ctx, cx, cy, size, skin) {
-    const dir = this._direction;
-    const eyeOffset = size * 0.38;
-    const eyeSize = size * 0.22;
-
-    // Göz pozisyonları (yöne göre offset)
-    const lx = cx + dir.x * 3 - dir.y * eyeOffset;
-    const ly = cy + dir.y * 3 + dir.x * eyeOffset;
-    const rx = cx + dir.x * 3 + dir.y * eyeOffset;
-    const ry = cy + dir.y * 3 - dir.x * eyeOffset;
-
-    // Göz beyazı (dış)
-    ctx.fillStyle = '#ffffff';
-    ctx.beginPath();
-    ctx.arc(lx, ly, eyeSize + 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(rx, ry, eyeSize + 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Göz iris (renkli)
-    const irisColor = skin.glow || '#00ffcc';
-    ctx.fillStyle = irisColor;
-    ctx.beginPath();
-    ctx.arc(lx + dir.x * 1.5, ly + dir.y * 1.5, eyeSize * 0.8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(rx + dir.x * 1.5, ry + dir.y * 1.5, eyeSize * 0.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Göz bebeği (siyah, yön offsetli)
-    ctx.fillStyle = '#000000';
-    ctx.beginPath();
-    ctx.arc(lx + dir.x * 2.5, ly + dir.y * 2.5, eyeSize * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(rx + dir.x * 2.5, ry + dir.y * 2.5, eyeSize * 0.45, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Göz highlight (parlak nokta)
-    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-    ctx.beginPath();
-    ctx.arc(lx + dir.x * 1 - 1, ly + dir.y * 1 - 1, eyeSize * 0.25, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(rx + dir.x * 1 - 1, ry + dir.y * 1 - 1, eyeSize * 0.25, 0, Math.PI * 2);
-    ctx.fill();
-  },
+  _drawEyes(ctx, cx, cy, size, skin) {},
 
   _roundRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -1113,23 +1009,27 @@ G.Player = {
     ctx.closePath();
   },
 
-  _lightenColor(hex, amount) {
+  _lighten(hex, amount) {
     if (!hex) return '#ffffff';
-    const { r, g, b } = G.Utils.hexToRgb(hex);
-    return G.Utils.rgbToHex(
-      Math.min(255, r + amount),
-      Math.min(255, g + amount),
-      Math.min(255, b + amount)
-    );
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return '#' + [r,g,b].map(c => Math.min(255, c + amount).toString(16).padStart(2,'0')).join('');
+  },
+
+  _darken(hex, amount) {
+    if (!hex) return '#000000';
+    const r = parseInt(hex.slice(1,3), 16);
+    const g = parseInt(hex.slice(3,5), 16);
+    const b = parseInt(hex.slice(5,7), 16);
+    return '#' + [r,g,b].map(c => Math.max(0, c - amount).toString(16).padStart(2,'0')).join('');
+  },
+
+  _lightenColor(hex, amount) {
+    return this._lighten(hex, amount);
   },
 
   _darkenColor(hex, amount) {
-    if (!hex) return '#000000';
-    const { r, g, b } = G.Utils.hexToRgb(hex);
-    return G.Utils.rgbToHex(
-      Math.max(0, r - amount),
-      Math.max(0, g - amount),
-      Math.max(0, b - amount)
-    );
+    return this._darken(hex, amount);
   }
 };
