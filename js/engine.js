@@ -28,6 +28,8 @@ G.Engine = {
     this.ctx = this.canvas.getContext('2d', { alpha: false });
     this.resize();
     window.addEventListener('resize', () => this.resize());
+    // Also handle orientation change on mobile
+    window.addEventListener('orientationchange', () => setTimeout(() => this.resize(), 100));
     this.changeState('menu');
     requestAnimationFrame((t) => this.loop(t));
   },

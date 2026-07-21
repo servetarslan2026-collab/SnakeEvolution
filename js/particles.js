@@ -5,12 +5,33 @@ window.G = window.G || {};
 
 G.Particles = {
   list: [],
+  pool: [], // Object pool for reuse
 
-  clear() { this.list = []; },
+  clear() { 
+    this.list = []; 
+    // Don't clear pool - keep for reuse
+  },
+
+  _getParticle() {
+    if (this.pool.length > 0) {
+      return this.pool.pop();
+    }
+    return {};
+  },
+
+  _recycleParticle(p) {
+    if (this.pool.length < 200) {
+      this.pool.push(p);
+    }
+  },
 
   emit(x, y, vx, vy, life, sz, col) {
     if (this.list.length > 150) return;
-    this.list.push({ x, y, vx, vy, life, ml: life, sz, col: col || '#fff' });
+    const p = this._getParticle();
+    p.x = x; p.y = y; p.vx = vx; p.vy = vy;
+    p.life = life; p.ml = life; p.sz = sz; p.col = col || '#fff';
+    p.shape = undefined; p.txt = undefined;
+    this.list.push(p);
   },
 
   burst(x, y, col, n) {
@@ -29,7 +50,11 @@ G.Particles = {
     for (let i = this.list.length - 1; i >= 0; i--) {
       const p = this.list[i];
       p.life -= dt;
-      if (p.life <= 0) { this.list.splice(i, 1); continue; }
+      if (p.life <= 0) { 
+        this._recycleParticle(this.list[i]);
+        this.list.splice(i, 1); 
+        continue; 
+      }
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.vx *= 0.95;

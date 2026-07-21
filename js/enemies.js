@@ -102,8 +102,19 @@ G.Enemies = {
             }
           }
         } else if (e.ai === 'turret') {
-          // Turret: don't move, but shoot laser periodically
-          // Handled in draw (visual laser)
+          // Turret: don't move, but check if player is in line of sight
+          if (dist < 15 && (Math.abs(dx) < 2 || Math.abs(dy) < 2)) {
+            // Player in line of sight - deal damage periodically
+            if (!e.shootTimer) e.shootTimer = 0;
+            e.shootTimer += dt;
+            if (e.shootTimer >= 2) { // Every 2 seconds
+              e.shootTimer = 0;
+              if (G.Snake.invTimer <= 0) {
+                G.Snake.takeDamage(1, 'turret');
+                G.Engine.notify('🎯 Lazer!', '#4488ff');
+              }
+            }
+          }
         }
 
         // Move

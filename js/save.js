@@ -53,7 +53,14 @@ G.Save = {
       } else {
         this.data = this.defaults();
       }
+
+      // Günlük görev sıfırla
+      const today = new Date().toISOString().slice(0, 10);
+      if (!this.data.dailyQuests || this.data.dailyQuests.date !== today) {
+        this.data.dailyQuests = { date: today, food: 0, games: 0, score: 0, level: 0, completed: [] };
+      }
     } catch (e) {
+      console.warn('Save load failed:', e);
       this.data = this.defaults();
     }
   },
@@ -61,7 +68,9 @@ G.Save = {
   write() {
     try {
       localStorage.setItem(this.KEY, JSON.stringify(this.data));
-    } catch (e) {}
+    } catch (e) {
+      console.warn('Save write failed:', e);
+    }
   },
 
   autoSave() {

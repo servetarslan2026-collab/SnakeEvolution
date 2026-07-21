@@ -40,6 +40,17 @@ G.Boss = {
     this.active.hp -= dmg;
     G.Particles.burst(this.active.rx * G.Engine.GS + G.Engine.GS / 2, this.active.ry * G.Engine.GS + G.Engine.GS / 2, this.active.color, 6);
 
+    // Faz geçişi kontrolü
+    const hpPct = this.active.hp / this.active.maxHp;
+    if (hpPct < 0.5 && this.active.phase === 0) {
+      this.active.phase = 1;
+      G.Engine.notify('💢 FAZ 2! Hız arttı!', '#ff4444');
+    }
+    if (hpPct < 0.25 && this.active.phase === 1) {
+      this.active.phase = 2;
+      G.Engine.notify('💀 FAZ 3! Çok tehlikeli!', '#ff0044');
+    }
+
     if (this.active.hp <= 0) {
       G.Particles.burst(this.active.rx * G.Engine.GS + G.Engine.GS / 2, this.active.ry * G.Engine.GS + G.Engine.GS / 2, '#ffaa00', 20);
       G.Engine.notify('🏆 ' + this.active.name + ' YENİLDİ! +50', '#ffaa00');
@@ -55,12 +66,27 @@ G.Boss = {
     const E = G.Engine;
     this.active.anim += dt;
 
-    // Move toward player (slowly)
+    // Faz bazlı hareket hızı
+    const speedMult = 1 + this.active.phase * 0.3;
     const head = G.Snake.head();
     const dx = head.x - this.active.x;
     const dy = head.y - this.active.y;
-    this.active.x += Math.sign(dx) * dt * 1.2;
-    this.active.y += Math.sign(dy) * dt * 1.2;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Boss AI: yaklaştığında geri çek, uzakken yaklaş
+    if (dist < 5) {
+      // Geri çekil
+      this.active.x -= Math.sign(dx) * dt * 1.5 * speedMult;
+      this.active.y -= Math.sign(dy) * dt * 1.5 * speedMult;
+    } else if (dist > 10) {
+      // Yaklaş
+      this.active.x += Math.sign(dx) * dt * 1.2 * speedMult;
+      this.active.y += Math.sign(dy) * dt * 1.2 * speedMult;
+    } else {
+      // Dairesel hareket
+      this.active.x += Math.cos(this.active.anim * 2) * dt * 2;
+      this.active.y += Math.sin(this.active.anim * 2) * dt * 2;
+    }
 
     // Smooth interpolation
     this.active.rx = G.Utils.lerp(this.active.rx, this.active.x, Math.min(1, dt * 6));
@@ -79,11 +105,11 @@ G.Boss = {
     const hpPct = this.active.hp / this.active.maxHp;
     if (hpPct < 0.5 && this.active.phase === 0) {
       this.active.phase = 1;
-      E.notify('💢 FAZ 2!', '#ff4444');
+      E.notify('💢 FAZ 2! Hız arttı!', '#ff4444');
     }
     if (hpPct < 0.25 && this.active.phase === 1) {
       this.active.phase = 2;
-      E.notify('💀 FAZ 3!', '#ff0044');
+      E.notify('💀 FAZ 3! Çok tehlikeli!', '#ff0044');
     }
   },
 
