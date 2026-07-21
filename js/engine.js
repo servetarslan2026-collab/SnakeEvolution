@@ -46,7 +46,7 @@ G.Engine = {
   changeState(newState) {
     this.state = newState;
     if (newState === 'play') {
-      this.startDelay = 0.5;
+      this.startDelay = 1;
     }
   },
 
@@ -200,7 +200,7 @@ G.Engine = {
     this.gameTime = 0;
     this.upgrades = [];
     this.currentBiome = 0;
-    this.startDelay = 0.5;
+    this.startDelay = 1;
     this.deadTimer = 0;
     this.notifications = [];
 

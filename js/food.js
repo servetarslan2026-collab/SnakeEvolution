@@ -11,8 +11,8 @@ G.Food = {
   init() {
     this.items = [];
     this.spawnTimer = 0;
-    // Spawn initial food
-    for (let i = 0; i < 6; i++) {
+    // Daha fazla başlangıç yemi
+    for (let i = 0; i < 8; i++) {
       this.spawn();
     }
   },
@@ -67,9 +67,9 @@ G.Food = {
   },
 
   update(dt) {
-    // Spawn timer
+    // Spawn timer — daha hızlı spawn
     this.spawnTimer += dt;
-    if (this.spawnTimer >= 2) {
+    if (this.spawnTimer >= 1.5) {
       this.spawnTimer = 0;
       this.spawn();
     }

@@ -24,16 +24,17 @@ G.Snake = {
     const E = G.Engine;
     const cx = E.W / E.GS / 2 | 0;
     const cy = E.H / E.GS / 2 | 0;
-    this.segments = [{ x: cx, y: cy }, { x: cx, y: cy + 1 }, { x: cx, y: cy + 2 }];
+    // Yılanı merkeze, aşağıya doğru başlat (duvardan uzak)
+    this.segments = [{ x: cx, y: cy }, { x: cx, y: cy - 1 }, { x: cx, y: cy - 2 }];
     this.renderPos = this.segments.map(s => ({ x: s.x, y: s.y }));
-    this.dir = { x: 0, y: -1 };
-    this.nextDir = { x: 0, y: -1 };
+    this.dir = { x: 0, y: 1 }; // Aşağı doğru başla
+    this.nextDir = { x: 0, y: 1 };
     this.speed = 4;
     this.moveTimer = 0;
     this.targetLength = 3;
     this.hp = 4;
     this.maxHp = 4;
-    this.invTimer = 2;
+    this.invTimer = 3; // 3 sn dokunulmazlık
     this.alive = true;
     this.secondLifeUsed = false;
     this.dashCooldown = 0;
@@ -133,21 +134,13 @@ G.Snake = {
       let nx = head.x + this.dir.x;
       let ny = head.y + this.dir.y;
 
-      // Boundary check — duvarlara çarpınca DUR + hasar
+      // Boundary check — kenarlardan geç (wrap around)
       const COLS = E.W / E.GS;
       const ROWS = E.H / E.GS;
-      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
-        if (this.invTimer > 0) {
-          // Ghost mode: duvarlardan geç
-          if (nx < 0) nx = COLS - 1;
-          if (nx >= COLS) nx = 0;
-          if (ny < 0) ny = ROWS - 1;
-          if (ny >= ROWS) ny = 0;
-        } else {
-          this.takeDamage(1, 'wall');
-          return;
-        }
-      }
+      if (nx < 0) nx = COLS - 1;
+      if (nx >= COLS) nx = 0;
+      if (ny < 0) ny = ROWS - 1;
+      if (ny >= ROWS) ny = 0;
 
       // Tile check — engeller
       const tile = G.Map.getTile(nx, ny);
@@ -156,8 +149,14 @@ G.Snake = {
         this.takeDamage(1, 'wall');
         return;
       }
-      if (tile === 2 || tile === 3 || tile === 7) { // Kaya, lava, elektrik = dur
-        continue; // Hareket etme, hasar tile efektlerinden gelir
+      if (tile === 2) { // Kaya = dur (hasar yok)
+        continue;
+      }
+      if (tile === 3) { // Lava = yavaşlat + zamanla hasar
+        continue;
+      }
+      if (tile === 7) { // Elektrik = zamanla hasar
+        continue;
       }
 
       // Self collision

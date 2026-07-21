@@ -14,15 +14,12 @@ G.Map = {
 
     for (let y = 0; y < ROWS; y++) {
       this.tiles[y] = new Uint8Array(COLS);
-      for (let x = 0; x < COLS; x++) {
-        if (x === 0 || x === COLS - 1 || y === 0 || y === ROWS - 1) {
-          this.tiles[y][x] = 1; // Wall
-        }
-      }
+      // Kenarlara duvar YOK — wrap around
+      // Sadece iç engeller olacak
     }
 
     // Obstacles (biome-based count) — engeller arası mesafe kontrolü
-    const count = 5 + E.currentBiome * 2;
+    const count = 3 + E.currentBiome; // Daha az engel
     const placed = [];
     for (let i = 0; i < count; i++) {
       let x, y, tries = 0;
@@ -41,11 +38,11 @@ G.Map = {
       placed.push({ x, y });
     }
 
-    // Clear spawn area (center 8x8)
+    // Clear spawn area (center 10x10 — daha büyük güvenli bölge)
     const cx = COLS / 2 | 0;
     const cy = ROWS / 2 | 0;
-    for (let dy = -4; dy <= 4; dy++) {
-      for (let dx = -4; dx <= 4; dx++) {
+    for (let dy = -5; dy <= 5; dy++) {
+      for (let dx = -5; dx <= 5; dx++) {
         const nx = cx + dx;
         const ny = cy + dy;
         if (nx > 0 && nx < COLS - 1 && ny > 0 && ny < ROWS - 1) {
@@ -83,6 +80,11 @@ G.Map = {
     const biome = E.getBiome();
     const ROWS = E.H / gs;
     const COLS = E.W / gs;
+
+    // Görsel kenarlık (engel olmayan)
+    ctx.strokeStyle = biome.accent + '44';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(1, 1, E.W - 2, E.H - 2);
 
     for (let y = 0; y < ROWS; y++) {
       for (let x = 0; x < COLS; x++) {
