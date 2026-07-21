@@ -1,0 +1,83 @@
+/* ============================================================
+   style.css — Snake Evolution Profesyonel Stil
+   ============================================================ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: 'Rajdhani', 'Segoe UI', sans-serif;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#game-container {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: radial-gradient(ellipse at center, #0a0a1a 0%, #000000 100%);
+}
+
+#game-stage {
+  position: relative;
+  image-rendering: auto;
+}
+
+canvas {
+  display: block;
+}
+
+/* Mobile controls */
+#mobile-controls {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+}
+
+#mobile-controls button {
+  background: rgba(0, 255, 204, 0.1);
+  border: 1px solid rgba(0, 255, 204, 0.25);
+  color: #00ffcc;
+  font-family: 'Orbitron', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  margin: 3px;
+  touch-action: manipulation;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+#mobile-controls button:active {
+  background: rgba(0, 255, 204, 0.3);
+  transform: scale(0.92);
+}
+
+@media (max-width: 600px), (max-height: 400px) {
+  #mobile-controls {
+    display: grid;
+    grid-template-columns: repeat(3, 56px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 3px;
+  }
+}
+
+::-webkit-scrollbar {
+  display: none;
+}

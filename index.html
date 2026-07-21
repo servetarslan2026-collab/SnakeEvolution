@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Snake Evolution</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <!-- Mobil kontroller (küçük ekranlarda) -->
+  <div id="mobile-controls">
+    <div></div>
+    <button id="btn-up">↑</button>
+    <div></div>
+    <button id="btn-left">←</button>
+    <button id="btn-down">↓</button>
+    <button id="btn-right">→</button>
+  </div>
+
+  <!-- Oyun modülleri (sıralı yükleme) -->
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/save.js"></script>
+  <script src="js/random.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/input.js"></script>
+  <script src="js/renderer.js"></script>
+  <script src="js/particles.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/food.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/enemy.js"></script>
+  <script src="js/boss.js"></script>
+  <script src="js/upgrade.js"></script>
+  <script src="js/skin.js"></script>
+  <script src="js/combo.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/stats.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/main.js"></script>
+
+  <script>
+    // Mobil buton desteği
+    (function() {
+      const btnUp = document.getElementById('btn-up');
+      const btnDown = document.getElementById('btn-down');
+      const btnLeft = document.getElementById('btn-left');
+      const btnRight = document.getElementById('btn-right');
+
+      function simulateKey(code) {
+        window.dispatchEvent(new KeyboardEvent('keydown', { code }));
+        setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { code })), 100);
+      }
+
+      if (btnUp) btnUp.addEventListener('touchstart', (e) => { e.preventDefault(); simulateKey('ArrowUp'); });
+      if (btnDown) btnDown.addEventListener('touchstart', (e) => { e.preventDefault(); simulateKey('ArrowDown'); });
+      if (btnLeft) btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); simulateKey('ArrowLeft'); });
+      if (btnRight) btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); simulateKey('ArrowRight'); });
+    })();
+  </script>
+</body>
+</html>
