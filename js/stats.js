@@ -50,8 +50,34 @@ G.Stats = {
     if (this.session.bossKills > (G.Save.data.bossKills || 0)) G.Save.data.bossKills = this.session.bossKills;
     if (gameTime > (G.Save.data.longestTime || 0)) G.Save.data.longestTime = gameTime;
     if (level > (G.Save.data.maxLevel || 0)) G.Save.data.maxLevel = level;
+
+    // Günlük görev güncelle
+    this.updateDailyQuests(score, level);
+
     G.Save.autoSave();
     this.checkAchievements();
+  },
+
+  updateDailyQuests(score, level) {
+    const today = new Date().toISOString().slice(0, 10);
+    if (G.Save.data.dailyQuests.date !== today) {
+      G.Save.data.dailyQuests = { date: today, food: 0, games: 0, score: 0, level: 0, completed: [] };
+    }
+    G.Save.data.dailyQuests.food += this.session.food;
+    G.Save.data.dailyQuests.games++;
+    G.Save.data.dailyQuests.score += score;
+    G.Save.data.dailyQuests.level = Math.max(G.Save.data.dailyQuests.level || 0, level);
+
+    // Tamamlanan görevleri kontrol et
+    for (const q of G.Config.DAILY_QUESTS) {
+      if (G.Save.data.dailyQuests.completed.includes(q.id)) continue;
+      const progress = G.Save.data.dailyQuests[q.type] || 0;
+      if (progress >= q.target) {
+        G.Save.data.dailyQuests.completed.push(q.id);
+        G.Save.data.coins += q.reward.coins;
+        G.Engine.notify('📋 Görev Tamamlandı: ' + q.desc + ' +' + q.reward.coins + ' Coin', '#44ff44');
+      }
+    }
   },
 
   checkAchievements() {

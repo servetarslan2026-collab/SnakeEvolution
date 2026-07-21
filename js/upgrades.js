@@ -9,18 +9,28 @@ G.Upgrades = {
     const rw = G.Config.RARITY_W;
     const result = [];
     const used = new Set();
+    const recentUpgrades = G.Engine.upgrades.slice(-5); // Son 5 upgrade
 
     for (let i = 0; i < count; i++) {
       let best = null;
       let bestW = 0;
+      let attempts = 0;
+      
       for (const u of all) {
         if (used.has(u.id)) continue;
-        const w = rw[u.rarity] || 10;
+        let w = rw[u.rarity] || 10;
+        
+        // Son alınan upgrade'lerin ağırlığını azalt
+        if (recentUpgrades.includes(u.id)) {
+          w = Math.max(1, w * 0.3); // %70 azalt
+        }
+        
         if (Math.random() * w > bestW) {
           best = u;
           bestW = w;
         }
       }
+      
       if (best) {
         result.push(best);
         used.add(best.id);

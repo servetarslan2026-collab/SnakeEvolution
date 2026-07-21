@@ -116,6 +116,15 @@ G.Config = {
 
   RARITY_W: { common: 50, uncommon: 30, rare: 15, epic: 4, legendary: 1 },
 
+  DAILY_QUESTS: [
+    { id: 'food50', desc: '50 yem topla', target: 50, type: 'food', reward: { coins: 20 } },
+    { id: 'food100', desc: '100 yem topla', target: 100, type: 'food', reward: { coins: 50 } },
+    { id: 'score500', desc: '500 skor yap', target: 500, type: 'score', reward: { coins: 30 } },
+    { id: 'score2000', desc: '2000 skor yap', target: 2000, type: 'score', reward: { coins: 100 } },
+    { id: 'games3', desc: '3 oyun oyna', target: 3, type: 'games', reward: { coins: 15 } },
+    { id: 'level5', desc: 'Level 5 e ulaş', target: 5, type: 'level', reward: { coins: 40 } }
+  ],
+
   ACHIEVEMENTS: [
     { id: 'first_blood', name: 'İlk Kan', desc: 'İlk yemi ye', icon: '🍎', check: (s) => s.totalFood >= 1 },
     { id: 'hungry', name: 'Aç', desc: '100 yem ye', icon: '🍽️', check: (s) => s.totalFood >= 100 },

@@ -20,11 +20,23 @@ G.Food = {
   spawn() {
     if (this.items.length >= this.maxFood) return;
     const types = G.Config.FOOD_TYPES;
+
+    // Ağırlıklı seçim — toplamı 100 olmalı
     let r = Math.random() * 100;
     let type = types[0];
     for (const t of types) {
       r -= t.w;
       if (r <= 0) { type = t; break; }
+    }
+
+    // Nadir yemlerin garantili çıkması için ek kontrol
+    if (this.items.length > 0) {
+      const lastType = this.items[this.items.length - 1].type;
+      if (lastType === type.type && type.w < 10) {
+        // Aynı nadir yem tekrar çıkmasın
+        const commonTypes = types.filter(t => t.w >= 10);
+        if (commonTypes.length > 0) type = commonTypes[G.Utils.rndInt(0, commonTypes.length - 1)];
+      }
     }
 
     const pos = G.Map.getRandomEmpty();
@@ -89,27 +101,52 @@ G.Food = {
       const pulse = Math.sin(now / 300 + f.anim) * 0.1 + 1;
       const sz = (gs / 2 - 1) * pulse;
 
-      // Outer glow
-      ctx.fillStyle = f.color + '33';
+      ctx.save();
+
+      // Outer glow (daha belirgin)
+      ctx.fillStyle = f.color + '44';
       ctx.beginPath();
-      ctx.arc(cx, cy, sz + 3, 0, E.PI2);
+      ctx.arc(cx, cy, sz + 4, 0, E.PI2);
       ctx.fill();
 
-      // Main circle
+      // Main circle (gradient)
       const g = ctx.createRadialGradient(cx - 2, cy - 2, 0, cx, cy, sz);
       g.addColorStop(0, '#ffffff');
-      g.addColorStop(0.4, f.color);
+      g.addColorStop(0.3, f.color);
       g.addColorStop(1, f.color + '88');
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(cx, cy, sz, 0, E.PI2);
       ctx.fill();
 
-      // Emoji
-      ctx.font = (sz * 0.65 | 0) + 'px Arial';
+      // Border (her yem için farklı)
+      ctx.strokeStyle = f.color;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, sz, 0, E.PI2);
+      ctx.stroke();
+
+      // Emoji (daha büyük)
+      ctx.font = (sz * 0.8 | 0) + 'px Arial';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#fff';
       ctx.fillText(f.icon, cx, cy);
+
+      // Altın yemler için sparkle efekti
+      if (f.type === 'golden' || f.type === 'star' || f.type === 'coin') {
+        const sparkAngle = now / 200;
+        for (let i = 0; i < 3; i++) {
+          const a = sparkAngle + i * 2.09;
+          const r = sz + 3;
+          ctx.fillStyle = '#ffffff88';
+          ctx.beginPath();
+          ctx.arc(cx + Math.cos(a) * r, cy + Math.sin(a) * r, 1.5, 0, E.PI2);
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
     }
   }
 };

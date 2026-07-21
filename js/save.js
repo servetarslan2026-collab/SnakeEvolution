@@ -24,7 +24,14 @@ G.Save = {
       achievements: [],
       unlockedSkins: ['default'],
       equippedSkin: 'default',
-      settings: { sound: 0.7, music: 0.5, shake: true, glow: true, particles: true }
+      settings: { sound: 0.7, music: 0.5, shake: true, glow: true, particles: true },
+      dailyQuests: {
+        date: '',
+        food: 0,
+        games: 0,
+        score: 0,
+        completed: []
+      }
     };
   },
 

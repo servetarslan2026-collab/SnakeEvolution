@@ -21,19 +21,24 @@ G.Map = {
       }
     }
 
-    // Obstacles (biome-based count)
+    // Obstacles (biome-based count) — engeller arası mesafe kontrolü
     const count = 5 + E.currentBiome * 2;
+    const placed = [];
     for (let i = 0; i < count; i++) {
-      const x = G.Utils.rndInt(4, COLS - 5);
-      const y = G.Utils.rndInt(4, ROWS - 5);
+      let x, y, tries = 0;
+      do {
+        x = G.Utils.rndInt(4, COLS - 5);
+        y = G.Utils.rndInt(4, ROWS - 5);
+        tries++;
+      } while (tries < 50 && (
+        this.tiles[y][x] !== 0 ||
+        placed.some(p => Math.abs(p.x - x) < 3 && Math.abs(p.y - y) < 3)
+      ));
+      if (tries >= 50) continue;
+
       const type = [2, 3, 4, 7][G.Utils.rndInt(0, 3)];
       this.tiles[y][x] = type;
-      // Some obstacles are 2x2
-      if (Math.random() < 0.3 && x + 1 < COLS - 1 && y + 1 < ROWS - 1) {
-        this.tiles[y][x + 1] = type;
-        this.tiles[y + 1][x] = type;
-        this.tiles[y + 1][x + 1] = type;
-      }
+      placed.push({ x, y });
     }
 
     // Clear spawn area (center 8x8)

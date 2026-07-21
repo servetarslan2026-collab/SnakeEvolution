@@ -70,7 +70,18 @@ G.UI = {
     ctx.fillStyle = '#333344';
     ctx.font = '11px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('High Score: ' + G.Save.data.highScore + ' | Coins: ' + G.Save.data.coins, 10, E.H - 18);
+    ctx.fillText('High Score: ' + G.Save.data.highScore + ' | Coins: ' + G.Save.data.coins, 10, E.H - 40);
+    ctx.fillText('Games: ' + G.Save.data.totalGames + ' | Level: ' + (G.Save.data.maxLevel || 0), 10, E.H - 28);
+
+    // Günlük görevler
+    const today = new Date().toISOString().slice(0, 10);
+    if (G.Save.data.dailyQuests.date === today) {
+      const dq = G.Save.data.dailyQuests;
+      ctx.fillStyle = '#44ff4488';
+      ctx.font = '10px monospace';
+      ctx.fillText('Görevler: Yem ' + (dq.food || 0) + '/50 | Oyun ' + (dq.games || 0) + '/3', 10, E.H - 16);
+    }
+
     ctx.fillText('v5.0', 10, E.H - 6);
 
     ctx.fillStyle = '#55667788';

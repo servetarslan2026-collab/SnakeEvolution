@@ -70,7 +70,7 @@ G.Snake = {
   takeDamage(amount, source) {
     if (this.invTimer > 0 || !this.alive) return;
 
-    this.hp -= amount;
+    this.hp = Math.max(0, this.hp - amount); // HP asla negatif olmasın
     G.Effects.shake(5, 0.3);
     G.Effects.flash('#ff0044', 0.2);
     G.Particles.burst(this.head().x * G.Engine.GS + G.Engine.GS / 2, this.head().y * G.Engine.GS + G.Engine.GS / 2, '#ff4444', 8);
@@ -83,11 +83,12 @@ G.Snake = {
         this.invTimer = 3;
         G.Engine.notify('💖 İKİNCİ HAYAT!', '#ff44aa');
       } else {
+        this.alive = false;
         G.Engine.die(source || 'unknown');
       }
     } else {
       this.invTimer = 1.5;
-      G.Engine.notify('⚠️ -' + amount + ' HP (#' + this.hp + ')', '#ff4444');
+      G.Engine.notify('⚠️ -' + amount + ' HP (' + this.hp + '/' + this.maxHp + ')', '#ff4444');
     }
   },
 
@@ -105,11 +106,12 @@ G.Snake = {
       return;
     }
 
-    // Smooth interpolation
+    // Smooth interpolation (daha akıcı)
     for (let i = 0; i < this.segments.length; i++) {
       if (this.renderPos[i]) {
-        this.renderPos[i].x = G.Utils.lerp(this.renderPos[i].x, this.segments[i].x, Math.min(1, dt * 15));
-        this.renderPos[i].y = G.Utils.lerp(this.renderPos[i].y, this.segments[i].y, Math.min(1, dt * 15));
+        const lerpSpeed = i === 0 ? 20 : 15; // Kafa daha hızlı takip
+        this.renderPos[i].x = G.Utils.lerp(this.renderPos[i].x, this.segments[i].x, Math.min(1, dt * lerpSpeed));
+        this.renderPos[i].y = G.Utils.lerp(this.renderPos[i].y, this.segments[i].y, Math.min(1, dt * lerpSpeed));
       }
     }
 
@@ -131,23 +133,31 @@ G.Snake = {
       let nx = head.x + this.dir.x;
       let ny = head.y + this.dir.y;
 
-      // Boundary check
-      if (nx < 0 || nx >= E.W / E.GS || ny < 0 || ny >= E.H / E.GS) {
+      // Boundary check — duvarlara çarpınca DUR + hasar
+      const COLS = E.W / E.GS;
+      const ROWS = E.H / E.GS;
+      if (nx < 0 || nx >= COLS || ny < 0 || ny >= ROWS) {
+        if (this.invTimer > 0) {
+          // Ghost mode: duvarlardan geç
+          if (nx < 0) nx = COLS - 1;
+          if (nx >= COLS) nx = 0;
+          if (ny < 0) ny = ROWS - 1;
+          if (ny >= ROWS) ny = 0;
+        } else {
+          this.takeDamage(1, 'wall');
+          return;
+        }
+      }
+
+      // Tile check — engeller
+      const tile = G.Map.getTile(nx, ny);
+      if (tile === 1) { // Duvar = ölüm
         if (this.invTimer > 0) continue;
         this.takeDamage(1, 'wall');
         return;
       }
-
-      // Tile check
-      const tile = G.Map.getTile(nx, ny);
-      if (G.Map.isBlocking(tile)) {
-        if (this.invTimer > 0) continue;
-        if (tile === 1) { // Wall = death
-          this.takeDamage(1, 'wall');
-          return;
-        }
-        // Rock, lava, electric = stop (damage from tile effects)
-        continue;
+      if (tile === 2 || tile === 3 || tile === 7) { // Kaya, lava, elektrik = dur
+        continue; // Hareket etme, hasar tile efektlerinden gelir
       }
 
       // Self collision
