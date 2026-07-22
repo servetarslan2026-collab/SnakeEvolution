@@ -36,7 +36,7 @@ window.G = window.G || {};
       if (c === 'ArrowUp' || c === 'KeyW') {
         e.preventDefault();
         if (E.state === 'play') { const d = { x: 0, y: -1 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
-        if (E.state === 'menu') E.selectedBtn = (E.selectedBtn - 1 + 4) % 4;
+        if (E.state === 'menu') E.selectedBtn = (E.selectedBtn - 1 + 5) % 5;
         if (E.state === 'howtoplay') E.howToPlayPage = Math.max(0, E.howToPlayPage - 1);
         if (E.state === 'settings') E.settingsIdx = Math.max(0, E.settingsIdx - 1);
         if (E.state === 'skins') E.skinScroll = Math.max(0, E.skinScroll - 1);
@@ -44,7 +44,7 @@ window.G = window.G || {};
       if (c === 'ArrowDown' || c === 'KeyS') {
         e.preventDefault();
         if (E.state === 'play') { const d = { x: 0, y: 1 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
-        if (E.state === 'menu') E.selectedBtn = (E.selectedBtn + 1) % 4;
+        if (E.state === 'menu') E.selectedBtn = (E.selectedBtn + 1) % 5;
         if (E.state === 'howtoplay') E.howToPlayPage = Math.min(2, E.howToPlayPage + 1);
         if (E.state === 'settings') E.settingsIdx = Math.min(4, E.settingsIdx + 1);
         if (E.state === 'skins') E.skinScroll = Math.min(G.Config.SKINS.length - 1, E.skinScroll + 1);
@@ -86,7 +86,8 @@ window.G = window.G || {};
           if (E.selectedBtn === 0) E.startGame();
           else if (E.selectedBtn === 1) { E.state = 'howtoplay'; E.howToPlayPage = 0; }
           else if (E.selectedBtn === 2) { E.state = 'skins'; E.skinScroll = 0; }
-          else if (E.selectedBtn === 3) { E.state = 'settings'; E.settingsIdx = 0; }
+          else if (E.selectedBtn === 3) { E.state = 'stats'; }
+          else if (E.selectedBtn === 4) { E.state = 'settings'; E.settingsIdx = 0; }
         } else if (E.state === 'dead') {
           E.startGame();
         } else if (E.state === 'levelup') {
@@ -127,6 +128,7 @@ window.G = window.G || {};
         else if (E.state === 'paused') { E.state = 'play'; G.Audio.startMusic(); }
         else if (E.state === 'dead') E.state = 'menu';
         else if (E.state === 'levelup') { E.applyUpgrade(E.upgradeChoices[E.selectedUpgrade]); E.state = 'play'; }
+        else if (E.state === 'stats') E.state = 'menu';
         else E.state = 'menu';
       }
 

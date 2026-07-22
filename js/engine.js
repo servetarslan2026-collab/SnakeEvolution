@@ -147,6 +147,7 @@ G.Engine = {
       case 'howtoplay': G.UI.drawHowToPlay(ctx); break;
       case 'settings': G.UI.drawSettings(ctx); break;
       case 'skins': G.UI.drawSkins(ctx); break;
+      case 'stats': G.UI.drawStats(ctx); break;
     }
 
     this.drawNotifications(ctx);

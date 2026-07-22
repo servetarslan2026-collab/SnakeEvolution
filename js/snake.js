@@ -337,6 +337,8 @@ G.Snake = {
     const skin = G.Config.SKINS.find(s => s.id === G.Save.data.equippedSkin) || G.Config.SKINS[0];
     const glowOn = G.Save.data.settings.glow !== false;
     const len = this.segments.length;
+    const isRainbow = skin.rainbow === true;
+    const rainbowHue = (now / 10) % 360;
     const thick = E.upgrades.includes('thickTail');
 
     // ============ NEON TRAIL ============
@@ -386,11 +388,14 @@ G.Snake = {
       ctx.fill();
 
       // Body segment
+      const segHue = isRainbow ? (rainbowHue + i * 15) % 360 : 0;
+      const headColor = isRainbow ? `hsl(${segHue},100%,50%)` : skin.head;
+      const bodyColor = isRainbow ? `hsl(${segHue},80%,35%)` : skin.body;
       const bg = ctx.createRadialGradient(px - sz * 0.3, py - sz * 0.3, 0, px, py, sz);
-      const lightColor = this._lighten(skin.head, 30);
+      const lightColor = isRainbow ? `hsl(${segHue},100%,65%)` : this._lighten(skin.head, 30);
       bg.addColorStop(0, lightColor);
-      bg.addColorStop(0.5, skin.head);
-      bg.addColorStop(1, skin.body);
+      bg.addColorStop(0.5, headColor);
+      bg.addColorStop(1, bodyColor);
       ctx.fillStyle = bg;
       ctx.beginPath();
       ctx.arc(px, py, sz, 0, E.PI2);

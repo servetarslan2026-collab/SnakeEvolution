@@ -55,8 +55,8 @@ G.UI = {
     ctx.fillText('A ROGUELIKE SNAKE EXPERIENCE', E.W / 2 | 0, 178);
 
     // Buttons
-    const btns = ['▶  PLAY', '📖  HOW TO PLAY', '🎨  SKINS', '⚙  SETTINGS'];
-    const sy = 220, sp = 50, bw = 280, bh = 42;
+    const btns = ['▶  PLAY', '📖  HOW TO PLAY', '🎨  SKINS', '📊  STATS', '⚙  SETTINGS'];
+    const sy = 210, sp = 46, bw = 280, bh = 40;
 
     for (let i = 0; i < 4; i++) {
       const y = sy + i * sp;
@@ -121,6 +121,81 @@ G.UI = {
     ctx.font = '11px Rajdhani';
     ctx.textAlign = 'center';
     ctx.fillText('↑↓ Navigate  •  ENTER Select', E.W / 2 | 0, E.H - 8);
+  },
+
+  drawStats(ctx) {
+    const E = G.Engine;
+    const b = E.getBiome();
+    const d = G.Save.data;
+
+    ctx.fillStyle = 'rgba(0,0,0,0.85)';
+    ctx.fillRect(0, 0, E.W, E.H);
+
+    ctx.fillStyle = b.accent;
+    ctx.font = 'bold 28px Orbitron';
+    ctx.textAlign = 'center';
+    ctx.fillText('İSTATİSTİKLER', E.W / 2 | 0, 60);
+
+    const stats = [
+      { label: 'Toplam Oyun', value: d.totalGames, icon: '🎮' },
+      { label: 'Toplam Yem', value: d.totalFood, icon: '🍎' },
+      { label: 'Toplam Süre', value: Math.floor(d.totalTime / 60) + ' dk', icon: '⏱️' },
+      { label: 'En Yüksek Skor', value: d.highScore, icon: '🏆' },
+      { label: 'Max Level', value: d.maxLevel || 0, icon: '📈' },
+      { label: 'Max Combo', value: 'x' + (d.maxCombo || 0), icon: '🔥' },
+      { label: 'Boss Kills', value: d.bossKills || 0, icon: '💀' },
+      { label: 'Toplam Coin', value: d.totalCoins || 0, icon: '🪙' },
+      { label: 'Biome Keşfedilen', value: d.biomesVisited || 1, icon: '🌍' },
+      { label: 'Açılan Skin', value: d.unlockedSkins.length + '/' + G.Config.SKINS.length, icon: '🎨' },
+      { label: 'Başarım', value: d.achievements.length + '/' + G.Config.ACHIEVEMENTS.length, icon: '🏅' }
+    ];
+
+    let y = 110;
+    for (const s of stats) {
+      ctx.fillStyle = '#445566';
+      ctx.font = '14px Rajdhani';
+      ctx.textAlign = 'left';
+      ctx.fillText(s.icon + ' ' + s.label, 200, y);
+      ctx.fillStyle = b.accent;
+      ctx.font = 'bold 14px monospace';
+      ctx.textAlign = 'right';
+      ctx.fillText('' + s.value, 600, y);
+      y += 28;
+    }
+
+    // Günlük görevler
+    const today = new Date().toISOString().slice(0, 10);
+    if (d.dailyQuests.date === today) {
+      const dq = d.dailyQuests;
+      y += 20;
+      ctx.fillStyle = '#44ff4488';
+      ctx.font = 'bold 14px Orbitron';
+      ctx.textAlign = 'center';
+      ctx.fillText('GÜNLÜK GÖREVLER', E.W / 2 | 0, y);
+      y += 25;
+      const quests = [
+        { label: 'Yem Topla', current: dq.food || 0, target: 50 },
+        { label: 'Oyun Oyna', current: dq.games || 0, target: 3 },
+        { label: 'Skor Yap', current: dq.score || 0, target: 500 }
+      ];
+      for (const q of quests) {
+        const pct = Math.min(1, q.current / q.target);
+        ctx.fillStyle = '#333';
+        ctx.fillRect(250, y - 8, 300, 12);
+        ctx.fillStyle = pct >= 1 ? '#44ff44' : b.accent;
+        ctx.fillRect(250, y - 8, 300 * pct, 12);
+        ctx.fillStyle = '#fff';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(q.label + ': ' + q.current + '/' + q.target, 400, y + 1);
+        y += 22;
+      }
+    }
+
+    ctx.fillStyle = '#666677';
+    ctx.font = '13px Rajdhani';
+    ctx.textAlign = 'center';
+    ctx.fillText('ESC ile dön', E.W / 2 | 0, E.H - 20);
   },
 
   drawHUD(ctx) {
