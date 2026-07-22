@@ -76,6 +76,7 @@ G.Engine = {
 
     G.Particles.update(this.dt);
     G.Effects.update(this.dt);
+    G.Animation.update(this.dt);
     if (this.state === 'play') G.Timers.update(this.dt);
     this.updateNotifications(this.dt);
 
@@ -159,8 +160,8 @@ G.Engine = {
     this.drawNotifications(ctx);
     G.Effects.drawFlash(ctx);
 
-    // ============ POST-PROCESSING ============
-    this.drawPostProcessing(ctx);
+    // ============ POST-PROCESSING (AAA+) ============
+    G.Effects.drawPostProcessing(ctx);
   },
 
   // ============ BIOME BACKGROUND EFFECTS ============
@@ -211,37 +212,7 @@ G.Engine = {
     ctx.globalAlpha = 1;
   },
 
-  // ============ POST-PROCESSING ============
-  drawPostProcessing(ctx) {
-    const w = this.W;
-    const h = this.H;
 
-    // Vignette
-    const vg = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.7);
-    vg.addColorStop(0, 'rgba(0,0,0,0)');
-    vg.addColorStop(1, 'rgba(0,0,0,0.4)');
-    ctx.fillStyle = vg;
-    ctx.fillRect(0, 0, w, h);
-
-    // Scanlines (subtle)
-    ctx.fillStyle = 'rgba(0,0,0,0.03)';
-    for (let y = 0; y < h; y += 3) {
-      ctx.fillRect(0, y, w, 1);
-    }
-
-    // Top/bottom gradient bars (cinematic)
-    const tg = ctx.createLinearGradient(0, 0, 0, 30);
-    tg.addColorStop(0, 'rgba(0,0,0,0.3)');
-    tg.addColorStop(1, 'rgba(0,0,0,0)');
-    ctx.fillStyle = tg;
-    ctx.fillRect(0, 0, w, 30);
-
-    const bg = ctx.createLinearGradient(0, h - 30, 0, h);
-    bg.addColorStop(0, 'rgba(0,0,0,0)');
-    bg.addColorStop(1, 'rgba(0,0,0,0.3)');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, h - 30, w, 30);
-  },
 
   notify(text, color, duration) {
     if (this.notifications.length < 4) {
