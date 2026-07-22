@@ -37,7 +37,7 @@ G.Enemies = {
     // Level ile düşman hızı ve HP artsın (yılanla rekabet)
     const levelBonus = E.level * 0.08;
     const hpBonus = Math.floor(E.level / 6);
-    this.list.push({
+    const enemy = {
       x, y, rx: x, ry: y,
       type: def.type,
       speed: def.speed + levelBonus,
@@ -48,8 +48,13 @@ G.Enemies = {
       moveTimer: 0,
       anim: 0,
       dir: { x: 0, y: -1 },
-      wanderTimer: 0
-    });
+      wanderTimer: 0,
+      // Özel özellikler
+      _growTimer: 0,     // Snake: büyür
+      _poisonTrail: 0,   // Bug: zehir izi bırakır
+      _chaseBoost: 0     // Chaser: yakınken hızlanır
+    };
+    this.list.push(enemy);
   },
 
   update(dt) {
@@ -229,6 +234,38 @@ G.Enemies = {
         }
       }
 
+      // ============ DÜŞMAN ÖZEL ÖZELLİKLERİ ============
+      // Snake düşmanı: büyür (uzunluk artar)
+      if (e.type === 'snake') {
+        e._growTimer += dt;
+        if (e._growTimer >= 5) {
+          e._growTimer = 0;
+          e.hp = Math.min(5, e.hp + 1);
+        }
+      }
+
+      // Bug: zehir izi bırakır (yılanın geçtiği yer)
+      if (e.type === 'bug') {
+        e._poisonTrail += dt;
+        if (e._poisonTrail >= 1) {
+          e._poisonTrail = 0;
+          // Yakındaki yılana yavaşlatma uygula
+          if (G.Utils.dist(G.Snake.head().x, G.Snake.head().y, e.x, e.y) < 3) {
+            G.Snake.speed = Math.max(2, G.Snake.speed * 0.95);
+          }
+        }
+      }
+
+      // Chaser: yakınken hızlanır
+      if (e.type === 'chaser') {
+        const chaserDist = G.Utils.dist(G.Snake.head().x, G.Snake.head().y, e.x, e.y);
+        if (chaserDist < 8) {
+          e._chaseBoost = Math.min(2, e._chaseBoost + dt * 0.5);
+        } else {
+          e._chaseBoost = Math.max(0, e._chaseBoost - dt * 0.5);
+        }
+      }
+
       // Player collision (cooldown: 1 sn)
       if (!e._hitCooldown) e._hitCooldown = 0;
       if (e._hitCooldown > 0) e._hitCooldown -= dt;
@@ -238,9 +275,24 @@ G.Enemies = {
         if (e.type === 'bomber') {
           G.Snake.takeDamage(1, 'bomber');
           e.alive = false;
-          G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ff8800', 15);
-          G.Effects.shake(4, 0.3);
+          // Büyük patlama
+          G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ff8800', 20);
+          G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ffcc00', 10);
+          G.Particles.smoke(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#888888', 5);
+          G.Effects.shake(6, 0.4);
+          G.Effects.flash('#ff8800', 0.2);
           E.notify('💥 Bomba patladı!', '#ff6600');
+          // Yakındaki düşmanlara da hasar
+          for (const other of G.Enemies.list) {
+            if (!other.alive || other === e) continue;
+            if (G.Utils.dist(e.x, e.y, other.x, other.y) < 3) {
+              other.hp -= 2;
+              if (other.hp <= 0) {
+                other.alive = false;
+                E.score += 15;
+              }
+            }
+          }
         } else {
           G.Snake.takeDamage(1, 'enemy');
           // Push enemy back

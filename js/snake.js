@@ -229,13 +229,20 @@ G.Snake = {
       // Food collision
       G.Food.checkCollision(nx, ny);
 
-      // Fire/Ice/Poison/Elec Tail: düşman etkileşimi
+      // Fire/Ice/Poison/Elec Tail: düşman etkileşimi (mesafe tabanlı)
       if (this.segments.length > 2) {
-        const tailX = this.segments[this.segments.length - 1].x;
-        const tailY = this.segments[this.segments.length - 1].y;
         for (const e of G.Enemies.list) {
           if (!e.alive) continue;
-          if (e.x === tailX && e.y === tailY) {
+          // Kuyruk segmentlerinin yakınındaki düşmanları kontrol et
+          let tailHit = false;
+          for (let t = this.segments.length - 1; t >= Math.max(0, this.segments.length - 5); t--) {
+            const tailSeg = this.segments[t];
+            if (G.Utils.dist(tailSeg.x, tailSeg.y, e.x, e.y) < 2) {
+              tailHit = true;
+              break;
+            }
+          }
+          if (tailHit) {
             if (E.upgrades.includes('fireTail')) {
               e.hp -= 2;
               G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ff4400', 5);
@@ -699,40 +706,67 @@ G.Snake = {
     const head = this.renderPos[0] || this.segments[0];
     const hx = head.x * gs + gs / 2;
     const hy = head.y * gs + gs / 2;
-    const t = Date.now() / 400;
-    const orbitR = 18;
+    const t = Date.now() / 300;
+    const orbitR = 22;
     const dx = hx + Math.cos(t) * orbitR;
     const dy = hy + Math.sin(t) * orbitR;
+    const glowOn = G.Save.data.settings.glow !== false;
 
     ctx.save();
-    ctx.globalAlpha = 0.85;
 
-    // Drone body
-    ctx.fillStyle = '#4488ff';
-    ctx.beginPath();
-    ctx.arc(dx, dy, 4, 0, E.PI2);
-    ctx.fill();
-
-    // Drone glow
-    if (G.Save.data.settings.glow !== false) {
-      ctx.fillStyle = '#4488ff33';
+    // Drone glow aura (büyük)
+    if (glowOn) {
+      const aura = ctx.createRadialGradient(dx, dy, 0, dx, dy, 20);
+      aura.addColorStop(0, '#4488ff44');
+      aura.addColorStop(1, '#4488ff00');
+      ctx.fillStyle = aura;
       ctx.beginPath();
-      ctx.arc(dx, dy, 8, 0, E.PI2);
+      ctx.arc(dx, dy, 20, 0, E.PI2);
       ctx.fill();
     }
 
-    // Drone eye
+    // Drone body (daha büyük)
+    ctx.fillStyle = '#224488';
+    ctx.beginPath();
+    ctx.arc(dx, dy, 8, 0, E.PI2);
+    ctx.fill();
+
+    // Drone outer ring
+    ctx.strokeStyle = '#4488ff';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(dx, dy, 8, 0, E.PI2);
+    ctx.stroke();
+
+    // Drone propellers (dönen)
+    ctx.strokeStyle = '#88ccff88';
+    ctx.lineWidth = 1.5;
+    for (let p = 0; p < 4; p++) {
+      const pa = Date.now() / 50 + p * 1.57;
+      ctx.beginPath();
+      ctx.moveTo(dx + Math.cos(pa) * 5, dy + Math.sin(pa) * 5);
+      ctx.lineTo(dx + Math.cos(pa) * 12, dy + Math.sin(pa) * 12);
+      ctx.stroke();
+    }
+
+    // Drone eye (kamera)
+    ctx.fillStyle = '#4488ff';
+    ctx.beginPath();
+    ctx.arc(dx, dy, 3, 0, E.PI2);
+    ctx.fill();
     ctx.fillStyle = '#fff';
     ctx.beginPath();
     ctx.arc(dx, dy, 1.5, 0, E.PI2);
     ctx.fill();
 
-    // Range indicator (hafif)
-    ctx.strokeStyle = '#4488ff11';
-    ctx.lineWidth = 0.5;
+    // Range indicator
+    ctx.strokeStyle = '#4488ff22';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
     ctx.beginPath();
     ctx.arc(hx, hy, 6 * gs, 0, E.PI2);
     ctx.stroke();
+    ctx.setLineDash([]);
 
     ctx.restore();
   },
@@ -877,18 +911,33 @@ G.Snake = {
       const sz = (gs / 2 - 2) * (1 - segT * 0.25);
 
       ctx.save();
-      ctx.globalAlpha = 0.5 + Math.sin(Date.now() / 200) * 0.15;
+      ctx.globalAlpha = 0.7 + Math.sin(Date.now() / 200) * 0.1;
+
+      // Glow aura
+      if (G.Save.data.settings.glow !== false) {
+        ctx.fillStyle = '#44ff2222';
+        ctx.beginPath();
+        ctx.arc(px, py, sz + 4, 0, E.PI2);
+        ctx.fill();
+      }
 
       if (i === 0) {
-        // Clone HEAD
-        const g = ctx.createRadialGradient(px - 2, py - 2, 1, px, py, sz + 2);
-        g.addColorStop(0, '#66ff44');
-        g.addColorStop(0.7, '#338822');
-        g.addColorStop(1, '#33882288');
+        // Clone HEAD (daha belirgin)
+        const g = ctx.createRadialGradient(px - 2, py - 2, 1, px, py, sz + 3);
+        g.addColorStop(0, '#88ff66');
+        g.addColorStop(0.5, '#44dd22');
+        g.addColorStop(1, '#228811');
         ctx.fillStyle = g;
         ctx.beginPath();
-        ctx.arc(px, py, sz + 2, 0, E.PI2);
+        ctx.arc(px, py, sz + 3, 0, E.PI2);
         ctx.fill();
+
+        // Border
+        ctx.strokeStyle = '#66ff4488';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px, py, sz + 3, 0, E.PI2);
+        ctx.stroke();
 
         // Eyes
         const eo = sz * 0.35;
@@ -898,20 +947,26 @@ G.Snake = {
         const rx = px + c.dir.x * 3 + c.dir.y * eo;
         const ry = py + c.dir.y * 3 - c.dir.x * eo;
         ctx.fillStyle = '#fff';
-        ctx.beginPath(); ctx.arc(lx, ly, es + 1, 0, E.PI2); ctx.fill();
-        ctx.beginPath(); ctx.arc(rx, ry, es + 1, 0, E.PI2); ctx.fill();
+        ctx.beginPath(); ctx.arc(lx, ly, es + 2, 0, E.PI2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rx, ry, es + 2, 0, E.PI2); ctx.fill();
         ctx.fillStyle = '#88ff66';
-        ctx.beginPath(); ctx.arc(lx + c.dir.x, ly + c.dir.y, es * 0.6, 0, E.PI2); ctx.fill();
-        ctx.beginPath(); ctx.arc(rx + c.dir.x, ry + c.dir.y, es * 0.6, 0, E.PI2); ctx.fill();
+        ctx.beginPath(); ctx.arc(lx + c.dir.x, ly + c.dir.y, es * 0.7, 0, E.PI2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rx + c.dir.x, ry + c.dir.y, es * 0.7, 0, E.PI2); ctx.fill();
       } else {
-        // Clone BODY
+        // Clone BODY (daha belirgin)
         const g = ctx.createRadialGradient(px - 1, py - 1, 0, px, py, sz);
-        g.addColorStop(0, '#66ff44');
-        g.addColorStop(1, '#338822');
+        g.addColorStop(0, '#88ff66');
+        g.addColorStop(1, '#228811');
         ctx.fillStyle = g;
         ctx.beginPath();
         ctx.arc(px, py, sz, 0, E.PI2);
         ctx.fill();
+        // Border
+        ctx.strokeStyle = '#44ff2244';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(px, py, sz, 0, E.PI2);
+        ctx.stroke();
       }
 
       ctx.restore();

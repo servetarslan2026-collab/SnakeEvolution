@@ -124,6 +124,75 @@ G.Boss = {
     this.active.x = G.Utils.clamp(this.active.x, 2, E.W / E.GS - 3);
     this.active.y = G.Utils.clamp(this.active.y, 2, E.H / E.GS - 3);
 
+    // ============ BOSS ÖZEL SALDIRILARI ============
+    if (!this.active.projectiles) this.active.projectiles = [];
+    if (!this.active.attackTimer) this.active.attackTimer = 0;
+    this.active.attackTimer += dt;
+
+    // Faz 1: Her 3 sn'de tek mermi
+    // Faz 2: Her 2 sn'de 3 mermi (yaylı)
+    // Faz 3: Her 1.5 sn'de 5 mermi (daire)
+    const attackInterval = this.active.phase >= 2 ? 1.5 : this.active.phase >= 1 ? 2 : 3;
+    if (this.active.attackTimer >= attackInterval) {
+      this.active.attackTimer = 0;
+      const b = this.active;
+      const bulletSpeed = 3 + this.active.phase;
+
+      if (this.active.phase >= 2) {
+        // Faz 3: 5 mermi daire şeklinde
+        for (let i = 0; i < 5; i++) {
+          const angle = (Math.PI * 2 / 5) * i + this.active.anim;
+          this.active.projectiles.push({
+            x: b.x, y: b.y,
+            vx: Math.cos(angle) * bulletSpeed,
+            vy: Math.sin(angle) * bulletSpeed,
+            life: 3, color: b.color
+          });
+        }
+      } else if (this.active.phase >= 1) {
+        // Faz 2: 3 mermi yaylı
+        const baseAngle = Math.atan2(dy, dx);
+        for (let i = -1; i <= 1; i++) {
+          const angle = baseAngle + i * 0.3;
+          this.active.projectiles.push({
+            x: b.x, y: b.y,
+            vx: Math.cos(angle) * bulletSpeed,
+            vy: Math.sin(angle) * bulletSpeed,
+            life: 3, color: b.color
+          });
+        }
+      } else {
+        // Faz 1: tek mermi oyuncuya doğru
+        const angle = Math.atan2(dy, dx);
+        this.active.projectiles.push({
+          x: b.x, y: b.y,
+          vx: Math.cos(angle) * bulletSpeed,
+          vy: Math.sin(angle) * bulletSpeed,
+          life: 3, color: b.color
+        });
+      }
+      G.Audio.playTone(300, 0.1, 'square');
+    }
+
+    // Mermileri güncelle
+    for (let i = this.active.projectiles.length - 1; i >= 0; i--) {
+      const p = this.active.projectiles[i];
+      p.life -= dt;
+      if (p.life <= 0) { this.active.projectiles.splice(i, 1); continue; }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      // Sınır kontrolü
+      if (p.x < 0 || p.x >= E.W / E.GS || p.y < 0 || p.y >= E.H / E.GS) {
+        this.active.projectiles.splice(i, 1);
+        continue;
+      }
+      // Oyuncuya çarpma
+      if (G.Snake.invTimer <= 0 && G.Utils.dist(G.Snake.head().x, G.Snake.head().y, p.x, p.y) < 1.5) {
+        G.Snake.takeDamage(1, 'boss_bullet');
+        this.active.projectiles.splice(i, 1);
+      }
+    }
+
     // Player collision (büyük hitbox)
     const bossDist = G.Utils.dist(G.Snake.head().x, G.Snake.head().y, this.active.x, this.active.y);
     if (G.Snake.invTimer <= 0 && bossDist < 2.5) {
@@ -360,5 +429,47 @@ G.Boss = {
     }
 
     ctx.restore();
+
+    // ============ BOSS MERMİLERİ ============
+    if (b.projectiles) {
+      for (const p of b.projectiles) {
+        const px = p.x * gs + gs / 2;
+        const py = p.y * gs + gs / 2;
+        const pLife = p.life / 3;
+
+        ctx.save();
+        ctx.globalAlpha = pLife;
+
+        // Glow
+        if (glowOn) {
+          const pg = ctx.createRadialGradient(px, py, 0, px, py, 12);
+          pg.addColorStop(0, p.color + '66');
+          pg.addColorStop(1, p.color + '00');
+          ctx.fillStyle = pg;
+          ctx.beginPath();
+          ctx.arc(px, py, 12, 0, PI2);
+          ctx.fill();
+        }
+
+        // Mermi
+        const mg = ctx.createRadialGradient(px - 1, py - 1, 0, px, py, 5);
+        mg.addColorStop(0, '#fff');
+        mg.addColorStop(0.5, p.color);
+        mg.addColorStop(1, p.color + '88');
+        ctx.fillStyle = mg;
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, PI2);
+        ctx.fill();
+
+        // Border
+        ctx.strokeStyle = p.color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(px, py, 5, 0, PI2);
+        ctx.stroke();
+
+        ctx.restore();
+      }
+    }
   }
 };
