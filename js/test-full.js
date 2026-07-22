@@ -452,7 +452,7 @@ G.FullTest = {
     // XP scalası
     tests.push(() => {
       G.Engine.startGame();
-      this.assertEq(G.Engine.xpNext, 30, 'Initial XP should be 30');
+      this.assertEq(G.Engine.xpNext, G.Config.INITIAL_XP || 25, 'Initial XP should match config');
       G.Engine.xp = G.Engine.xpNext;
       G.Engine.collectFood({x:20,y:15,type:'crystal',color:'#aa44ff',sc:0,len:0,xp:1,hp:0,icon:'💎',anim:0,alive:true});
       this.assert(G.Engine.level > 1, 'Should level up');

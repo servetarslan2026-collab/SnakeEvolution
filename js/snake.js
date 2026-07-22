@@ -25,13 +25,12 @@ G.Snake = {
     const E = G.Engine;
     const cx = E.W / E.GS / 2 | 0;
     const cy = E.H / E.GS / 2 | 0;
-    // Yılanı merkeze, aşağıya doğru başlat (duvardan uzak)
     this.segments = [{ x: cx, y: cy }, { x: cx, y: cy - 1 }, { x: cx, y: cy - 2 }];
     this.renderPos = this.segments.map(s => ({ x: s.x, y: s.y }));
-    this.dir = { x: 0, y: 1 }; // Aşağı doğru başla
+    this.dir = { x: 0, y: 1 };
     this.nextDir = { x: 0, y: 1 };
     this.dirQueue = [];
-    this.speed = 4;
+    this.speed = G.Config.START_SPEED || 4;
     this.moveTimer = 0;
     this.targetLength = 3;
     this.hp = 4;
@@ -139,7 +138,7 @@ G.Snake = {
       this._momentumTimer += dt;
       if (this._momentumTimer >= 3) {
         this._momentumTimer = 0;
-        this.speed = Math.min(15, this.speed * 1.05);
+        this.speed = Math.min((G.Config.MAX_SPEED || 9) + 2, this.speed * 1.05);
       }
     }
 
@@ -206,16 +205,7 @@ G.Snake = {
         if (tile === 2) { // Kaya = dur
           continue;
         }
-        // Lava (3): geçilebilir, anında hasar
-        if (tile === 3) {
-          this.takeDamage(1, 'lava');
-          E.notify('🔥 Lava!', '#ff4400');
-        }
-        // Elektrik (7): geçilebilir, anında hasar
-        if (tile === 7) {
-          this.takeDamage(1, 'electric');
-          E.notify('⚡ Elektrik!', '#ffe14d');
-        }
+        // Lava (3) ve Elektrik (7): geçilebilir, hasar checkTileEffects'ta
       }
 
       // Self collision
@@ -272,7 +262,7 @@ G.Snake = {
               e.alive = false;
               G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 10);
               E.score += 15;
-              E.notify('💀 Düşman öldü! +5', '#ff4444');
+              E.notify('💀 Düşman öldü! +15', '#ff4444');
             }
           }
         }

@@ -265,7 +265,7 @@ G.Engine = {
     this.score = 0;
     this.level = 1;
     this.xp = 0;
-    this.xpNext = 30;
+    this.xpNext = G.Config.INITIAL_XP || 25;
     this.combo = 0;
     this.comboTimer = 0;
     this.comboMult = 1;
@@ -357,7 +357,10 @@ G.Engine = {
     if (food.effect === 'slow') {
       G.Snake.speed *= 0.7;
       const slowLevel = this.level;
-      G.Timers.add(() => { if (G.Snake.alive && this.state === 'play') G.Snake.speed = Math.min(10, 4 + slowLevel * 0.15); }, 3000);
+      const maxSpd = G.Config.MAX_SPEED || 9;
+      const startSpd = G.Config.START_SPEED || 4;
+      const spdPerLvl = G.Config.SPEED_PER_LEVEL || 0.12;
+      G.Timers.add(() => { if (G.Snake.alive && this.state === 'play') G.Snake.speed = Math.min(maxSpd, startSpd + slowLevel * spdPerLvl); }, 3000);
     }
     if (food.effect === 'bomb') {
       // BlastGuard: patlamadan hasar almaz
@@ -412,8 +415,8 @@ G.Engine = {
     if (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
-      this.xpNext = Math.floor(this.xpNext * 1.10);
-      G.Snake.speed = Math.min(9, 4 + this.level * 0.12);
+      this.xpNext = Math.floor(this.xpNext * (G.Config.XP_MULTIPLIER || 1.08));
+      G.Snake.speed = Math.min(G.Config.MAX_SPEED || 9, (G.Config.START_SPEED || 4) + this.level * (G.Config.SPEED_PER_LEVEL || 0.12));
 
       // Boss spawn every 5 levels
       if (this.level % 5 === 0 && this.level > 0) {
@@ -433,7 +436,7 @@ G.Engine = {
     G.Combo.timer = 0;
     G.Combo.multiplier = 1;
     G.Audio.stopMusic();
-    // Ölüm efekti: büyük patlama
+    // Ölüm efekti
     const head = G.Snake.head();
     const px = head.x * this.GS + this.GS / 2;
     const py = head.y * this.GS + this.GS / 2;
@@ -442,9 +445,6 @@ G.Engine = {
     G.Particles.burst(px, py, '#ffffff', 10);
     G.Effects.shake(10, 0.5);
     G.Effects.flash('#ff0044', 0.3);
-    G.Effects.shake(8, 0.4);
-    G.Effects.flash('#ff0044', 0.3);
-    G.Particles.burst(G.Snake.head().x * this.GS + this.GS / 2, G.Snake.head().y * this.GS + this.GS / 2, this.getBiome().accent, 10);
     G.Audio.playTone(200, 0.25);
     G.Stats.onDeath(this.score, this.level, this.gameTime, reason);
     G.Save.autoSave();
