@@ -4,7 +4,20 @@
 window.G = window.G || {};
 
 G.Config = {
+  // Sabitler
   W: 800, H: 600, GS: 20,
+  MAX_ENEMIES: 4,
+  MAX_FOOD: 12,
+  MAX_PARTICLES: 150,
+  COMBO_TIMER: 3.5,
+  SPAWN_INTERVAL: 1.0,
+  BOSS_SPAWN_INTERVAL: 12,
+  START_HP: 4,
+  START_SPEED: 4,
+  MAX_SPEED: 9,
+  SPEED_PER_LEVEL: 0.12,
+  XP_MULTIPLIER: 1.10,
+  INITIAL_XP: 30,
   get COLS() { return this.W / this.GS; },
   get ROWS() { return this.H / this.GS; },
   PI2: Math.PI * 2,

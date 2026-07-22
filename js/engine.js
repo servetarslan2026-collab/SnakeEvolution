@@ -52,6 +52,7 @@ G.Engine = {
   },
 
   loop(now) {
+    try {
     this.dt = Math.min((now - this.lastTime) / 1000, 0.05);
     this.lastTime = now;
     this.fpsCounter++;
@@ -82,6 +83,11 @@ G.Engine = {
     this.draw();
 
     requestAnimationFrame((t) => this.loop(t));
+    } catch(e) {
+      console.error('Game loop error:', e);
+      if (G.Logger) G.Logger.logError('LOOP', e.message, { stack: e.stack });
+      requestAnimationFrame((t) => this.loop(t));
+    }
   },
 
   draw() {
