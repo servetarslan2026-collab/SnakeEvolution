@@ -16,8 +16,8 @@ G.Config = {
   START_SPEED: 4,
   MAX_SPEED: 9,
   SPEED_PER_LEVEL: 0.12,
-  XP_MULTIPLIER: 1.10,
-  INITIAL_XP: 30,
+  XP_MULTIPLIER: 1.08,
+  INITIAL_XP: 25,
   get COLS() { return this.W / this.GS; },
   get ROWS() { return this.H / this.GS; },
   PI2: Math.PI * 2,
@@ -46,12 +46,12 @@ G.Config = {
   ],
 
   ENEMY_TYPES: [
-    { type: 'bug', speed: 1.5, hp: 1, color: '#ff2244', ai: 'wander' },
-    { type: 'snake', speed: 2, hp: 1, color: '#44ff22', ai: 'chase' },
-    { type: 'bomber', speed: 2.5, hp: 1, color: '#ff8800', ai: 'bomber' },
+    { type: 'bug', speed: 2, hp: 1, color: '#ff2244', ai: 'wander' },
+    { type: 'snake', speed: 2.5, hp: 1, color: '#44ff22', ai: 'chase' },
+    { type: 'bomber', speed: 3, hp: 1, color: '#ff8800', ai: 'bomber' },
     { type: 'drone', speed: 0, hp: 3, color: '#4488ff', ai: 'turret' },
-    { type: 'ghost', speed: 1, hp: 5, color: '#aaaaff', ai: 'ghost' },
-    { type: 'chaser', speed: 2, hp: 2, color: '#ff4444', ai: 'chase' }
+    { type: 'ghost', speed: 1.5, hp: 5, color: '#aaaaff', ai: 'ghost' },
+    { type: 'chaser', speed: 2.5, hp: 2, color: '#ff4444', ai: 'chase' }
   ],
 
   BOSS_TYPES: [

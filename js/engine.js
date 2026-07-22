@@ -368,10 +368,17 @@ G.Engine = {
 
     // Effects
     const gs = this.GS;
-    G.Particles.burst(food.x * gs + gs / 2, food.y * gs + gs / 2, food.color, 6);
-    if (sc > 0) G.Particles.floatText(food.x * gs + gs / 2, food.y * gs - 10, '+' + sc, food.color);
-    if (xpg > 0) G.Particles.floatText(food.x * gs + gs / 2, food.y * gs - 25, '+' + xpg + ' XP', '#aa44ff');
-    if (food.hp > 0) G.Particles.floatText(food.x * gs + gs / 2, food.y * gs - 25, '+' + food.hp + ' HP', '#ff44aa');
+    const fpx = food.x * gs + gs / 2;
+    const fpy = food.y * gs + gs / 2;
+    G.Particles.burst(fpx, fpy, food.color, 8);
+    G.Particles.burst(fpx, fpy, '#ffffff', 4);
+    if (sc > 0) G.Particles.floatText(fpx, fpy - 10, '+' + sc, food.color);
+    if (xpg > 0) G.Particles.floatText(fpx, fpy - 25, '+' + xpg + ' XP', '#aa44ff');
+    if (food.hp > 0) G.Particles.floatText(fpx, fpy - 25, '+' + food.hp + ' HP', '#ff44aa');
+    // Combo efekti
+    if (G.Combo.count >= 5) {
+      G.Particles.floatText(fpx, fpy - 40, 'x' + G.Combo.multiplier, '#ffaa00');
+    }
 
     // Special effects
     if (food.effect === 'slow') {
@@ -466,6 +473,15 @@ G.Engine = {
     G.Combo.timer = 0;
     G.Combo.multiplier = 1;
     G.Audio.stopMusic();
+    // Ölüm efekti: büyük patlama
+    const head = G.Snake.head();
+    const px = head.x * this.GS + this.GS / 2;
+    const py = head.y * this.GS + this.GS / 2;
+    G.Particles.burst(px, py, '#ff0044', 20);
+    G.Particles.burst(px, py, '#ffaa00', 15);
+    G.Particles.burst(px, py, '#ffffff', 10);
+    G.Effects.shake(10, 0.5);
+    G.Effects.flash('#ff0044', 0.3);
     G.Effects.shake(8, 0.4);
     G.Effects.flash('#ff0044', 0.3);
     G.Particles.burst(G.Snake.head().x * this.GS + this.GS / 2, G.Snake.head().y * this.GS + this.GS / 2, this.getBiome().accent, 10);
@@ -478,9 +494,16 @@ G.Engine = {
     this.state = 'levelup';
     this.selectedUpgrade = 0;
     this.upgradeChoices = G.Upgrades.pick(3);
-    G.Effects.shake(3, 0.2);
-    G.Effects.flash('#ffaa00', 0.15);
+    G.Effects.shake(4, 0.25);
+    G.Effects.flash('#ffaa00', 0.2);
     G.Audio.playTone(523, 0.1);
+    // Level up parçacıkları
+    const head = G.Snake.head();
+    const px = head.x * this.GS + this.GS / 2;
+    const py = head.y * this.GS + this.GS / 2;
+    G.Particles.burst(px, py, '#ffaa00', 15);
+    G.Particles.burst(px, py, '#ffffff', 10);
+    G.Particles.floatText(px, py - 20, 'LEVEL ' + this.level + '!', '#ffaa00');
   },
 
   applyUpgrade(u) {

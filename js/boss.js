@@ -53,12 +53,21 @@ G.Boss = {
 
     if (this.active.hp <= 0 && !this.active.dying) {
       this.active.dying = true;
-      this.active.deathTimer = 1.5;
+      this.active.deathTimer = 2.0;
       this.active.alive = false;
-      G.Engine.notify('🏆 ' + this.active.name + ' YENİLDİ! +50', '#ffaa00');
+      G.Engine.notify('🏆 ' + this.active.name + ' YENİLDİ! +50', '#ffaa00', 4);
       G.Engine.score += 50;
       G.Stats.onBossKill();
       G.Audio.playTone(800, 0.2);
+      // Boss ölüm efekti: devasa patlama
+      const bx = this.active.rx * G.Engine.GS + G.Engine.GS / 2;
+      const by = this.active.ry * G.Engine.GS + G.Engine.GS / 2;
+      G.Particles.burst(bx, by, this.active.color, 25);
+      G.Particles.burst(bx, by, '#ffaa00', 20);
+      G.Particles.burst(bx, by, '#ffffff', 15);
+      G.Particles.floatText(bx, by - 30, '+50', '#ffaa00');
+      G.Effects.shake(8, 0.5);
+      G.Effects.flash('#ffaa00', 0.3);
     }
   },
 

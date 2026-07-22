@@ -34,13 +34,14 @@ G.Enemies = {
     } while ((G.Map.getTile(x, y) !== 0 || G.Utils.dist(x, y, head.x, head.y) < 8) && tries < 50);
     if (tries >= 50) return;
 
-    // Level ile düşman hızı artsın
+    // Level ile düşman hızı ve HP artsın
     const levelBonus = E.level * 0.05;
+    const hpBonus = Math.floor(E.level / 8);
     this.list.push({
       x, y, rx: x, ry: y,
       type: def.type,
       speed: def.speed + levelBonus,
-      hp: def.hp + Math.floor(E.level / 10),
+      hp: def.hp + hpBonus,
       color: def.color,
       ai: def.ai,
       alive: true,
@@ -55,9 +56,10 @@ G.Enemies = {
     const E = G.Engine;
     if (!G.Snake.alive) return;
 
-    // Spawn timer
+    // Spawn timer (level ile hızlanır)
     this.spawnTimer += dt;
-    if (this.spawnTimer >= 12 && this.list.length < 4) {
+    const spawnInterval = Math.max(5, 12 - E.level * 0.3);
+    if (this.spawnTimer >= spawnInterval && this.list.length < 4) {
       this.spawnTimer = 0;
       this.spawn();
     }
