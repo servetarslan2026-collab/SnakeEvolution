@@ -117,14 +117,19 @@ G.Food = {
     if ((hasMagnet || hasVortex) && G.Snake.alive) {
       const head = G.Snake.head();
       const range = hasVortex ? 10 : 5;
-      const strength = hasVortex ? 0.25 : 0.15;
+      const strength = hasVortex ? 0.3 : 0.2;
       for (const f of this.items) {
         if (!f.alive) continue;
         const d = G.Utils.dist(head.x, head.y, f.x, f.y);
-        if (d < range && d > 0.5) {
+        if (d < range && d > 0.3) {
           const angle = Math.atan2(head.y - f.y, head.x - f.x);
           f.x += Math.cos(angle) * strength;
           f.y += Math.sin(angle) * strength;
+          // Ekrandan çıkmasını engelle
+          const COLS = G.Engine.W / G.Engine.GS;
+          const ROWS = G.Engine.H / G.Engine.GS;
+          f.x = G.Utils.clamp(f.x, 0, COLS - 1);
+          f.y = G.Utils.clamp(f.y, 0, ROWS - 1);
         }
       }
     }
@@ -133,7 +138,10 @@ G.Food = {
   checkCollision(nx, ny) {
     for (let i = this.items.length - 1; i >= 0; i--) {
       const f = this.items[i];
-      if (f.alive && f.x === nx && f.y === ny) {
+      if (!f.alive) continue;
+      // Float pozisyon için mesafe tabanlı kontrol (magnet/vortex uyumluluğu)
+      const d = G.Utils.dist(f.x, f.y, nx, ny);
+      if (d < 0.8) {
         G.Engine.collectFood(f);
         this.items.splice(i, 1);
       }

@@ -36,11 +36,13 @@ G.Engine = {
 
   resize() {
     const s = Math.min(innerWidth / this.W, innerHeight / this.H);
-    this.canvas.width = this.W * s | 0;
-    this.canvas.height = this.H * s | 0;
-    this.canvas.style.width = this.W * s + 'px';
-    this.canvas.style.height = this.H * s + 'px';
-    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
+    const w = Math.floor(this.W * s);
+    const h = Math.floor(this.H * s);
+    this.canvas.width = w;
+    this.canvas.height = h;
+    this.canvas.style.width = w + 'px';
+    this.canvas.style.height = h + 'px';
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0);
     this.ctx.setTransform(s, 0, 0, s, 0, 0);
   },
 
