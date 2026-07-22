@@ -117,11 +117,18 @@ G.Food = {
     if ((hasMagnet || hasVortex) && G.Snake.alive) {
       const head = G.Snake.head();
       const range = hasVortex ? 10 : 5;
-      const strength = hasVortex ? 0.3 : 0.2;
-      for (const f of this.items) {
+      const strength = hasVortex ? 0.5 : 0.35;
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        const f = this.items[i];
         if (!f.alive) continue;
         const d = G.Utils.dist(head.x, head.y, f.x, f.y);
-        if (d < range && d > 0.3) {
+        if (d < range) {
+          if (d < 0.8) {
+            // Çok yak�n — direkt topla
+            G.Engine.collectFood(f);
+            this.items.splice(i, 1);
+            continue;
+          }
           const angle = Math.atan2(head.y - f.y, head.x - f.x);
           f.x += Math.cos(angle) * strength;
           f.y += Math.sin(angle) * strength;
