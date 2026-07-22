@@ -8,11 +8,13 @@ G.Food = {
   spawnTimer: 0,
   maxFood: 12,
   _spawnCount: 0,
+  _collecting: false, // Double-collection guard
 
   init() {
     this.items = [];
     this.spawnTimer = 0;
-    // Daha fazla başlangıç yemi
+    this._spawnCount = 0;
+    this._collecting = false;
     for (let i = 0; i < 12; i++) {
       this.spawn();
     }
@@ -22,7 +24,7 @@ G.Food = {
     if (this.items.length >= this.maxFood) return;
     const types = G.Config.FOOD_TYPES;
 
-    // Ağırlıklı seçim — gerçek toplam ağırlığa göre
+    // Ağırlıklı seçim
     const totalWeight = types.reduce((sum, t) => sum + t.w, 0);
     let r = Math.random() * totalWeight;
     let type = types[0];
@@ -31,11 +33,10 @@ G.Food = {
       if (r <= 0) { type = t; break; }
     }
 
-    // Nadir yemlerin garantili çıkması için ek kontrol
+    // Aynı nadir yem tekrar çıkmasın
     if (this.items.length > 0) {
       const lastType = this.items[this.items.length - 1].type;
       if (lastType === type.type && type.w < 10) {
-        // Aynı nadir yem tekrar çıkmasın - farklı tür seç
         const differentTypes = types.filter(t => t.type !== lastType);
         if (differentTypes.length > 0) {
           type = differentTypes[G.Utils.rndInt(0, differentTypes.length - 1)];
@@ -58,7 +59,8 @@ G.Food = {
     do {
       pos = G.Map.getRandomEmpty();
       tries++;
-    } while (tries < 20 && this.items.some(f => f.x === pos.x && f.y === pos.y));
+    } while (tries < 20 && this.items.some(f => Math.round(f.x) === pos.x && Math.round(f.y) === pos.y));
+
     this.items.push({
       x: pos.x,
       y: pos.y,
@@ -76,22 +78,22 @@ G.Food = {
   },
 
   update(dt) {
-    // Spawn timer — daha hızlı spawn
+    if (this._collecting) return; // Toplama sırasında güncelleme yapma
+
+    // Spawn timer
     this.spawnTimer += dt;
-    // Boss savaşında daha az yem spawn
     const spawnRate = G.Boss.isActive() ? 2.0 : 1.0;
     if (this.spawnTimer >= spawnRate) {
       this.spawnTimer = 0;
       this.spawn();
     }
 
-    // AutoCollect: her 3 sn'de 1 yem otomatik topla
+    // AutoCollect: her 3 sn'de 1 yem
     if (G.Engine.upgrades.includes('autoCollect') && G.Snake.alive) {
       if (!this._autoTimer) this._autoTimer = 0;
       this._autoTimer += dt;
       if (this._autoTimer >= 3 && this.items.length > 0) {
         this._autoTimer = 0;
-        // En yakın yemi bul
         const head = G.Snake.head();
         let closest = null;
         let closestDist = Infinity;
@@ -103,36 +105,27 @@ G.Food = {
             closest = f;
           }
         }
-        if (closest) {
-          G.Engine.collectFood(closest);
-          const idx = this.items.indexOf(closest);
-          if (idx >= 0) this.items.splice(idx, 1);
+        if (closest && closestDist < 8) {
+          this.collectAndRemove(closest);
         }
       }
     }
 
-    // Vortex + Magnet effect
+    // Vortex + Magnet effect (sadece hareket ettir, toplama checkCollision'a bırak)
     const hasMagnet = G.Engine.upgrades.includes('magnet');
     const hasVortex = G.Engine.upgrades.includes('vortex');
     if ((hasMagnet || hasVortex) && G.Snake.alive) {
       const head = G.Snake.head();
       const range = hasVortex ? 10 : 5;
       const strength = hasVortex ? 0.5 : 0.35;
-      for (let i = this.items.length - 1; i >= 0; i--) {
-        const f = this.items[i];
+      for (const f of this.items) {
         if (!f.alive) continue;
         const d = G.Utils.dist(head.x, head.y, f.x, f.y);
-        if (d < range) {
-          if (d < 0.8) {
-            // Çok yak�n — direkt topla
-            G.Engine.collectFood(f);
-            this.items.splice(i, 1);
-            continue;
-          }
+        if (d < range && d > 0.5) {
           const angle = Math.atan2(head.y - f.y, head.x - f.x);
           f.x += Math.cos(angle) * strength;
           f.y += Math.sin(angle) * strength;
-          // Ekrandan çıkmasını engelle
+          // Sınır kontrolü
           const COLS = G.Engine.W / G.Engine.GS;
           const ROWS = G.Engine.H / G.Engine.GS;
           f.x = G.Utils.clamp(f.x, 0, COLS - 1);
@@ -142,15 +135,26 @@ G.Food = {
     }
   },
 
+  // Güvenli toplama fonksiyonu (double-collection guard ile)
+  collectAndRemove(food) {
+    if (this._collecting) return;
+    this._collecting = true;
+    G.Engine.collectFood(food);
+    const idx = this.items.indexOf(food);
+    if (idx >= 0) this.items.splice(idx, 1);
+    this._collecting = false;
+  },
+
   checkCollision(nx, ny) {
+    if (this._collecting) return;
     for (let i = this.items.length - 1; i >= 0; i--) {
       const f = this.items[i];
       if (!f.alive) continue;
-      // Float pozisyon için mesafe tabanlı kontrol (magnet/vortex uyumluluğu)
+      // Float pozisyon için mesafe tabanlı kontrol
       const d = G.Utils.dist(f.x, f.y, nx, ny);
       if (d < 0.8) {
-        G.Engine.collectFood(f);
-        this.items.splice(i, 1);
+        this.collectAndRemove(f);
+        return; // Bir karede bir yem topla
       }
     }
   },
@@ -174,13 +178,13 @@ G.Food = {
 
       ctx.save();
 
-      // ============ SHADOW ============
+      // Gölge
       ctx.fillStyle = 'rgba(0,0,0,0.2)';
       ctx.beginPath();
       ctx.ellipse(cx + 1, cy + gs / 2 - 2, sz * 0.7, sz * 0.25, 0, 0, PI2);
       ctx.fill();
 
-      // ============ GLOW AURA ============
+      // Glow aura
       if (glowOn) {
         const auraG = ctx.createRadialGradient(cx, fy, sz * 0.5, cx, fy, sz * 2.5);
         auraG.addColorStop(0, f.color + '44');
@@ -191,9 +195,8 @@ G.Food = {
         ctx.fill();
       }
 
-      // ============ TYPE-SPECIFIC DRAWING ============
+      // Tür bazlı çizim
       if (f.type === 'normal') {
-        // Elma — parlak kırmızı, yaprak, highlight
         const ag = ctx.createRadialGradient(cx - sz * 0.2, fy - sz * 0.3, 0, cx, fy, sz);
         ag.addColorStop(0, '#ff6666');
         ag.addColorStop(0.6, '#ff2244');
@@ -202,17 +205,14 @@ G.Food = {
         ctx.beginPath();
         ctx.arc(cx, fy, sz, 0, PI2);
         ctx.fill();
-        // Highlight
         ctx.fillStyle = 'rgba(255,255,255,0.35)';
         ctx.beginPath();
         ctx.ellipse(cx - sz * 0.25, fy - sz * 0.3, sz * 0.3, sz * 0.2, -0.5, 0, PI2);
         ctx.fill();
-        // Yaprak
         ctx.fillStyle = '#44bb22';
         ctx.beginPath();
         ctx.ellipse(cx + 2, fy - sz - 1, 4, 2, 0.3, 0, PI2);
         ctx.fill();
-        // Sap
         ctx.strokeStyle = '#885522';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -221,7 +221,6 @@ G.Food = {
         ctx.stroke();
 
       } else if (f.type === 'golden') {
-        // Altın elma — altın küre, dönen ışınlar
         const gg = ctx.createRadialGradient(cx - sz * 0.2, fy - sz * 0.2, 0, cx, fy, sz);
         gg.addColorStop(0, '#ffee88');
         gg.addColorStop(0.5, '#ffcc00');
@@ -230,7 +229,6 @@ G.Food = {
         ctx.beginPath();
         ctx.arc(cx, fy, sz, 0, PI2);
         ctx.fill();
-        // Işınlar
         ctx.strokeStyle = '#ffdd4466';
         ctx.lineWidth = 1;
         for (let r = 0; r < 6; r++) {
@@ -240,15 +238,12 @@ G.Food = {
           ctx.lineTo(cx + Math.cos(ra) * (sz + 8), fy + Math.sin(ra) * (sz + 8));
           ctx.stroke();
         }
-        // Yıldız sparkle'lar
         for (let sp = 0; sp < 4; sp++) {
           const sa = t * 2 + sp * 1.57;
           const sr = sz + 5 + Math.sin(t * 3 + sp) * 3;
-          const sx = cx + Math.cos(sa) * sr;
-          const sy = fy + Math.sin(sa) * sr;
           ctx.fillStyle = '#ffffffcc';
           ctx.beginPath();
-          ctx.arc(sx, sy, 1.5, 0, PI2);
+          ctx.arc(cx + Math.cos(sa) * sr, fy + Math.sin(sa) * sr, 1.5, 0, PI2);
           ctx.fill();
         }
         ctx.fillStyle = 'rgba(255,255,255,0.4)';
@@ -257,7 +252,6 @@ G.Food = {
         ctx.fill();
 
       } else if (f.type === 'crystal') {
-        // Kristal — çokgen, prizma ışığı
         ctx.fillStyle = '#8833ff';
         ctx.beginPath();
         ctx.moveTo(cx, fy - sz);
@@ -267,7 +261,6 @@ G.Food = {
         ctx.lineTo(cx - sz * 0.7, fy - sz * 0.2);
         ctx.closePath();
         ctx.fill();
-        // Prizma parıltı
         const cg = ctx.createLinearGradient(cx - sz, fy, cx + sz, fy);
         cg.addColorStop(0, '#ff000033');
         cg.addColorStop(0.3, '#ffff0033');
@@ -275,7 +268,6 @@ G.Food = {
         cg.addColorStop(1, '#0000ff33');
         ctx.fillStyle = cg;
         ctx.fill();
-        // Highlight
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.beginPath();
         ctx.moveTo(cx - sz * 0.2, fy - sz * 0.8);
@@ -295,7 +287,6 @@ G.Food = {
         ctx.stroke();
 
       } else if (f.type === 'heart') {
-        // Kalp — nabız atan kalp
         const hp = 1 + Math.sin(t * 5) * 0.12;
         ctx.fillStyle = '#ff2266';
         ctx.save();
@@ -306,7 +297,6 @@ G.Food = {
         ctx.bezierCurveTo(-sz, -sz * 0.3, -sz, -sz, 0, -sz * 0.5);
         ctx.bezierCurveTo(sz, -sz, sz, -sz * 0.3, 0, sz * 0.3);
         ctx.fill();
-        // Highlight
         ctx.fillStyle = 'rgba(255,255,255,0.3)';
         ctx.beginPath();
         ctx.arc(-sz * 0.25, -sz * 0.35, sz * 0.15, 0, PI2);
@@ -314,7 +304,6 @@ G.Food = {
         ctx.restore();
 
       } else if (f.type === 'bomb') {
-        // Bomba — siyah küre, fitil, kıvılcım
         ctx.fillStyle = '#222';
         ctx.beginPath();
         ctx.arc(cx, fy, sz, 0, PI2);
@@ -323,16 +312,13 @@ G.Food = {
         ctx.beginPath();
         ctx.arc(cx - sz * 0.2, fy - sz * 0.2, sz * 0.3, 0, PI2);
         ctx.fill();
-        // Fitil
         ctx.strokeStyle = '#885522';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
         ctx.moveTo(cx, fy - sz);
         ctx.quadraticCurveTo(cx + 5, fy - sz - 6, cx + 3, fy - sz - 10);
         ctx.stroke();
-        // Kıvılcım
-        const sparkOn = Math.sin(t * 15) > 0;
-        if (sparkOn) {
+        if (Math.sin(t * 15) > 0) {
           ctx.fillStyle = '#ffaa00';
           ctx.beginPath();
           ctx.arc(cx + 3, fy - sz - 11, 2.5, 0, PI2);
@@ -344,7 +330,6 @@ G.Food = {
         }
 
       } else if (f.type === 'clock') {
-        // Saat — kadran, akrep, yelkovan
         ctx.fillStyle = '#1a2a44';
         ctx.beginPath();
         ctx.arc(cx, fy, sz, 0, PI2);
@@ -354,7 +339,6 @@ G.Food = {
         ctx.beginPath();
         ctx.arc(cx, fy, sz, 0, PI2);
         ctx.stroke();
-        // Saat çizgileri
         for (let h = 0; h < 12; h++) {
           const ha = h * 0.524;
           ctx.strokeStyle = '#4488ff44';
@@ -364,14 +348,12 @@ G.Food = {
           ctx.lineTo(cx + Math.cos(ha) * (sz - 1), fy + Math.sin(ha) * (sz - 1));
           ctx.stroke();
         }
-        // Akrep
         ctx.strokeStyle = '#88ccff';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(cx, fy);
         ctx.lineTo(cx + Math.cos(t) * sz * 0.5, fy + Math.sin(t) * sz * 0.5);
         ctx.stroke();
-        // Yelkovan
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(cx, fy);
@@ -379,14 +361,12 @@ G.Food = {
         ctx.stroke();
 
       } else if (f.type === 'poison') {
-        // Zehir — yeşil damla, kabarcıklar
         ctx.fillStyle = '#22cc00';
         ctx.beginPath();
         ctx.moveTo(cx, fy - sz);
         ctx.quadraticCurveTo(cx + sz, fy, cx, fy + sz * 0.7);
         ctx.quadraticCurveTo(cx - sz, fy, cx, fy - sz);
         ctx.fill();
-        // Kabarcıklar
         for (let b = 0; b < 3; b++) {
           const bx = cx + Math.sin(t * 2 + b * 2) * sz * 0.3;
           const by = fy + Math.cos(t * 2 + b * 2) * sz * 0.2 - sz * 0.2;
@@ -401,7 +381,6 @@ G.Food = {
         ctx.fill();
 
       } else if (f.type === 'magnet') {
-        // Mıknatıs — U şekli, manyetik alan çizgileri
         ctx.strokeStyle = '#ff4444';
         ctx.lineWidth = 3;
         ctx.beginPath();
@@ -410,12 +389,10 @@ G.Food = {
         ctx.fillStyle = '#ff4444';
         ctx.fillRect(cx - sz * 0.6, fy - 2, 4, sz * 0.5);
         ctx.fillRect(cx + sz * 0.6 - 4, fy - 2, 4, sz * 0.5);
-        // N/S
         ctx.fillStyle = '#4488ff';
         ctx.fillRect(cx - sz * 0.6, fy + sz * 0.3, 4, 4);
         ctx.fillStyle = '#ff4444';
         ctx.fillRect(cx + sz * 0.6 - 4, fy + sz * 0.3, 4, 4);
-        // Alan çizgileri
         ctx.strokeStyle = '#00ffcc22';
         ctx.lineWidth = 0.5;
         for (let m = 0; m < 3; m++) {
@@ -426,7 +403,6 @@ G.Food = {
         }
 
       } else if (f.type === 'lucky') {
-        // Dört yapraklı yonca
         ctx.fillStyle = '#44dd22';
         for (let lf = 0; lf < 4; lf++) {
           const la = lf * 1.57 + 0.785;
@@ -440,7 +416,6 @@ G.Food = {
         ctx.beginPath();
         ctx.arc(cx, fy, sz * 0.2, 0, PI2);
         ctx.fill();
-        // Sap
         ctx.strokeStyle = '#44aa22';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
@@ -449,7 +424,6 @@ G.Food = {
         ctx.stroke();
 
       } else if (f.type === 'star' || f.type === 'invincible') {
-        // Yıldız — parlayan, dönen ışınlar
         ctx.fillStyle = '#ffffff';
         ctx.save();
         ctx.translate(cx, fy);
@@ -464,7 +438,6 @@ G.Food = {
         ctx.closePath();
         ctx.fill();
         ctx.restore();
-        // Parıltı
         ctx.fillStyle = '#ffffff88';
         for (let sp = 0; sp < 6; sp++) {
           const sa = t * 3 + sp * 1.047;
@@ -475,7 +448,6 @@ G.Food = {
         }
 
       } else if (f.type === 'coin') {
-        // Coin — dönen daire, $ işareti
         const coinW = Math.abs(Math.cos(t * 2));
         ctx.save();
         ctx.translate(cx, fy);
@@ -501,7 +473,7 @@ G.Food = {
         ctx.restore();
 
       } else {
-        // Fallback — canvas-drawn glowing orb
+        // Fallback
         const fg = ctx.createRadialGradient(cx - 2, fy - 2, 0, cx, fy, sz);
         fg.addColorStop(0, '#ffffff');
         fg.addColorStop(0.3, f.color);
@@ -515,10 +487,6 @@ G.Food = {
         ctx.beginPath();
         ctx.arc(cx, fy, sz, 0, PI2);
         ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.3)';
-        ctx.beginPath();
-        ctx.ellipse(cx - sz * 0.2, fy - sz * 0.3, sz * 0.25, sz * 0.15, -0.5, 0, PI2);
-        ctx.fill();
       }
 
       ctx.restore();

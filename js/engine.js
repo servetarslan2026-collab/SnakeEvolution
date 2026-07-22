@@ -364,7 +364,7 @@ G.Engine = {
       if (this.upgrades.includes('blastGuard')) {
         this.notify('🛡️ Patlama engellendi!', '#00ffcc');
       } else {
-        G.Snake.takeDamage(2, 'bomb');
+        G.Snake.takeDamage(1, 'bomb');
       }
     }
     if (food.effect === 'invincible') G.Snake.activateInvincible(3);
@@ -383,27 +383,14 @@ G.Engine = {
       else { this.xp += 30; this.notify('+30 XP!', '#aa44ff'); }
     }
 
-    // FoodBoom: yakındaki yemleri topla (recursive guard)
+    // FoodBoom: yakındaki yemleri topla
     if (this.upgrades.includes('foodBoom') && !this._foodBoomActive) {
       this._foodBoomActive = true;
       const head = G.Snake.head();
       const boomRange = 5;
-      const boomItems = [];
-      for (let i = G.Food.items.length - 1; i >= 0; i--) {
-        const f = G.Food.items[i];
-        if (f === food || !f.alive) continue;
-        if (G.Utils.dist(head.x, head.y, f.x, f.y) < boomRange) {
-          boomItems.push(i);
-        }
-      }
-      // Tersten sil (index kaymasını önle)
-      boomItems.sort((a, b) => b - a);
-      for (const idx of boomItems) {
-        const f = G.Food.items[idx];
-        if (f) {
-          this.collectFood(f);
-          G.Food.items.splice(idx, 1);
-        }
+      const boomItems = G.Food.items.filter(f => f !== food && f.alive && G.Utils.dist(head.x, head.y, f.x, f.y) < boomRange);
+      for (const f of boomItems) {
+        G.Food.collectAndRemove(f);
       }
       this._foodBoomActive = false;
       if (boomItems.length > 0) this.notify('💣 Yem Patlaması! (+' + boomItems.length + ')', '#ff6600');
