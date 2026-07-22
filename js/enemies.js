@@ -81,10 +81,14 @@ G.Enemies = {
           G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#44ff00', 3);
           if (e.hp <= 0) {
             e.alive = false;
-            G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 10);
+            G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 15);
+            G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, "#ffffff", 6);
+            G.Particles.floatText(e.x * E.GS + E.GS / 2, e.y * E.GS - 10, "+15", "#44ff00");
+            G.Effects.shake(2, 0.1);
             E.score += 15;
-            E.notify('☠️ Zehir ölümü! +5', '#44ff00');
+            E.notify("☠️ Zehir ölümü! +15", "#44ff00");
           }
+
         }
         if (e._poisonTimer <= 0) e._poisoned = false;
       }
@@ -212,6 +216,9 @@ G.Enemies = {
           E.notify('💥 Patlayan Kuyruk!', '#ff6600');
           if (e.hp <= 0) {
             e.alive = false;
+            G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 15);
+            G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ffffff', 6);
+            G.Particles.floatText(e.x * E.GS + E.GS / 2, e.y * E.GS - 10, '+15', '#ff6600');
             E.score += 15;
           }
         }
@@ -231,8 +238,12 @@ G.Enemies = {
             G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ccccff', 4);
             if (e.hp <= 0) {
               e.alive = false;
+              G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 15);
+              G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ffffff', 6);
+              G.Particles.floatText(e.x * E.GS + E.GS / 2, e.y * E.GS - 10, '+15', '#ccccff');
+              G.Effects.shake(2, 0.1);
               E.score += 15;
-              E.notify('⛓️ Zincir ölümü! +5', '#ccccff');
+              E.notify('⛓️ Zincir ölümü! +15', '#ccccff');
             }
           }
         }
@@ -254,9 +265,12 @@ G.Enemies = {
             E.notify('🤖 Drone hasar!', '#4488ff');
             if (e.hp <= 0) {
               e.alive = false;
-              G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 10);
+              G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 15);
+              G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ffffff', 6);
+              G.Particles.floatText(e.x * E.GS + E.GS / 2, e.y * E.GS - 10, '+15', '#4488ff');
+              G.Effects.shake(2, 0.1);
               E.score += 15;
-              E.notify('🤖 Drone öldürdü! +5', '#4488ff');
+              E.notify('🤖 Drone öldürdü! +15', '#4488ff');
             }
             break; // Bir seferde bir düşmana
           }

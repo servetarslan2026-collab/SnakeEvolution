@@ -1,0 +1,13 @@
+{
+  "name": "snake-evolution",
+  "version": "6.0.0",
+  "description": "Modern roguelite Snake game - Vanilla JS, Canvas, Web Audio. 50+ upgrades, 6 bosses, 6 biomes, zero dependencies.",
+  "main": "index.html",
+  "scripts": {
+    "test": "node -e \"console.log('Open index.html in browser to run tests')\"",
+    "serve": "python3 -m http.server 8080"
+  },
+  "keywords": ["snake", "game", "roguelite", "canvas", "vanilla-js"],
+  "author": "SnakeEvolution Dev",
+  "license": "MIT"
+}

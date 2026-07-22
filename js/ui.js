@@ -115,7 +115,7 @@ G.UI = {
     ctx.fillStyle = '#334';
     ctx.font = '10px monospace';
     ctx.textAlign = 'right';
-    ctx.fillText('v5.0', E.W - 15, E.H - 35);
+    ctx.fillText('v6.0', E.W - 15, E.H - 35);
 
     ctx.fillStyle = '#55667788';
     ctx.font = '11px Rajdhani';
@@ -339,7 +339,7 @@ G.UI = {
 
   drawMiniMap(ctx) {
     const E = G.Engine;
-    const mw = 60, mh = 45, mx = E.W - mw - 10, my = E.H - mh - 10;
+    const mw = 80, mh = 60, mx = E.W - mw - 10, my = E.H - mh - 10;
     const sx = mw / (E.W / E.GS);
     const sy = mh / (E.H / E.GS);
 
