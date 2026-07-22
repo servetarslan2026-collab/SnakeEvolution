@@ -196,7 +196,7 @@ G.Snake = {
       } else if (this.invTimer > 0) {
         // Invincible iken sadece duvarı atla, lava/elektriğe gir
         if (tile === 1) continue;
-        if (tile === 2) continue; // Kaya yine engel
+        if (tile === 2) continue;
       } else {
         // Normal tile kontrolü
         if (tile === 1) { // Duvar = ölüm
@@ -206,7 +206,16 @@ G.Snake = {
         if (tile === 2) { // Kaya = dur
           continue;
         }
-        // Lava (3) ve Elektrik (7): geçilebilir, hasar checkTileEffects'ta
+        // Lava (3): geçilebilir, anında hasar
+        if (tile === 3) {
+          this.takeDamage(1, 'lava');
+          E.notify('🔥 Lava!', '#ff4400');
+        }
+        // Elektrik (7): geçilebilir, anında hasar
+        if (tile === 7) {
+          this.takeDamage(1, 'electric');
+          E.notify('⚡ Elektrik!', '#ffe14d');
+        }
       }
 
       // Self collision

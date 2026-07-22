@@ -117,11 +117,21 @@ G.Enemies = {
         const dy = head.y - e.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
 
-        if (e.ai === 'chase' && dist < 15) {
-          if (Math.abs(dx) > Math.abs(dy)) {
-            e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
+        if (e.ai === 'chase') {
+          if (dist < 15) {
+            // Menzil içinde: takip et
+            if (Math.abs(dx) > Math.abs(dy)) {
+              e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
+            } else {
+              e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
+            }
           } else {
-            e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
+            // Menzil dışı: wander
+            e.wanderTimer -= 1;
+            if (e.wanderTimer <= 0) {
+              e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
+              e.wanderTimer = G.Utils.rndInt(3, 8);
+            }
           }
         } else if (e.ai === 'bomber') {
           // Bomber: agresif takip — her zaman oyuncuya doğru
@@ -149,15 +159,28 @@ G.Enemies = {
             }
           }
         } else if (e.ai === 'turret') {
-          // Turret: don't move, but check if player is in line of sight
+          // Turret: don't move, but check if player is in line of sight (duvar kontrolü)
           if (dist < 15 && (Math.abs(dx) < 2 || Math.abs(dy) < 2)) {
-            if (!e.shootTimer) e.shootTimer = 0;
-            e.shootTimer += dt;
-            if (e.shootTimer >= 3) {
-              e.shootTimer = 0;
-              if (G.Snake.invTimer <= 0) {
-                G.Snake.takeDamage(1, 'turret');
-                G.Engine.notify('🎯 Lazer!', '#4488ff');
+            // Duvar kontrolü: turret ile oyuncu arasında duvar var mı?
+            let blocked = false;
+            const stepX = Math.sign(dx);
+            const stepY = Math.sign(dy);
+            let checkX = e.x;
+            let checkY = e.y;
+            for (let s = 0; s < Math.max(Math.abs(dx), Math.abs(dy)); s++) {
+              checkX += stepX;
+              checkY += stepY;
+              if (G.Map.getTile(checkX, checkY) === 1) { blocked = true; break; }
+            }
+            if (!blocked) {
+              if (!e.shootTimer) e.shootTimer = 0;
+              e.shootTimer += dt;
+              if (e.shootTimer >= 3) {
+                e.shootTimer = 0;
+                if (G.Snake.invTimer <= 0) {
+                  G.Snake.takeDamage(1, 'turret');
+                  G.Engine.notify('🎯 Lazer!', '#4488ff');
+                }
               }
             }
           }
