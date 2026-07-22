@@ -69,6 +69,7 @@ G.Engine = {
       G.Boss.update(this.dt);
       G.Combo.update(this.dt);
       this.checkBiomeChange();
+      this.updateBgEffects(this.dt);
     }
 
     G.Particles.update(this.dt);
@@ -109,6 +110,7 @@ G.Engine = {
       case 'menu': G.UI.drawMenu(ctx); break;
       case 'play':
         G.Map.draw(ctx);
+        this.drawBgEffects(ctx);
         G.Food.draw(ctx);
         G.Enemies.draw(ctx);
         G.Boss.draw(ctx);
@@ -147,6 +149,89 @@ G.Engine = {
 
     this.drawNotifications(ctx);
     G.Effects.drawFlash(ctx);
+
+    // ============ POST-PROCESSING ============
+    this.drawPostProcessing(ctx);
+  },
+
+  // ============ BIOME BACKGROUND EFFECTS ============
+  _bgParticles: [],
+  _bgTimer: 0,
+
+  updateBgEffects(dt) {
+    this._bgTimer += dt;
+    // Spawn background particles
+    if (this._bgTimer > 0.3 && this._bgParticles.length < 40) {
+      this._bgTimer = 0;
+      const b = this.currentBiome;
+      const particle = {
+        x: Math.random() * this.W,
+        y: b === 2 ? this.H + 5 : -5, // Lava: bottom-up, others: top-down
+        vx: (Math.random() - 0.5) * 20,
+        vy: b === 2 ? -(20 + Math.random() * 30) : (10 + Math.random() * 20),
+        sz: 1 + Math.random() * 2,
+        life: 3 + Math.random() * 4,
+        maxLife: 3 + Math.random() * 4,
+        color: G.Config.BIOMES[b].accent,
+        type: b
+      };
+      this._bgParticles.push(particle);
+    }
+    // Update
+    for (let i = this._bgParticles.length - 1; i >= 0; i--) {
+      const p = this._bgParticles[i];
+      p.life -= dt;
+      if (p.life <= 0) { this._bgParticles.splice(i, 1); continue; }
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.type === 3) p.vx += Math.sin(this.gameTime * 2 + i) * dt * 10; // Cyber Forest: firefly drift
+    }
+  },
+
+  drawBgEffects(ctx) {
+    const glowOn = G.Save.data.settings.glow !== false;
+    if (!glowOn) return;
+    for (const p of this._bgParticles) {
+      const a = (p.life / p.maxLife) * 0.4;
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.sz, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  },
+
+  // ============ POST-PROCESSING ============
+  drawPostProcessing(ctx) {
+    const w = this.W;
+    const h = this.H;
+
+    // Vignette
+    const vg = ctx.createRadialGradient(w / 2, h / 2, w * 0.3, w / 2, h / 2, w * 0.7);
+    vg.addColorStop(0, 'rgba(0,0,0,0)');
+    vg.addColorStop(1, 'rgba(0,0,0,0.4)');
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, w, h);
+
+    // Scanlines (subtle)
+    ctx.fillStyle = 'rgba(0,0,0,0.03)';
+    for (let y = 0; y < h; y += 3) {
+      ctx.fillRect(0, y, w, 1);
+    }
+
+    // Top/bottom gradient bars (cinematic)
+    const tg = ctx.createLinearGradient(0, 0, 0, 30);
+    tg.addColorStop(0, 'rgba(0,0,0,0.3)');
+    tg.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = tg;
+    ctx.fillRect(0, 0, w, 30);
+
+    const bg = ctx.createLinearGradient(0, h - 30, 0, h);
+    bg.addColorStop(0, 'rgba(0,0,0,0)');
+    bg.addColorStop(1, 'rgba(0,0,0,0.3)');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, h - 30, w, 30);
   },
 
   notify(text, color) {
@@ -180,6 +265,10 @@ G.Engine = {
     if (newBiome !== this.currentBiome) {
       this.currentBiome = newBiome;
       G.Map.generate();
+      // biomesVisited tracking
+      if (!this._visitedBiomes) this._visitedBiomes = new Set([0]);
+      this._visitedBiomes.add(newBiome);
+      G.Save.data.biomesVisited = this._visitedBiomes.size;
       this.notify('🌍 ' + G.Config.BIOMES[newBiome].name, G.Config.BIOMES[newBiome].accent);
     }
   },
@@ -213,6 +302,10 @@ G.Engine = {
     G.Particles.clear();
     G.Effects.reset();
     G.Stats.startSession();
+    this._visitedBiomes = new Set([0]);
+    this._bgParticles = [];
+    this._bgTimer = 0;
+    this._foodBoomActive = false;
 
     this.changeState('play');
     this.notify('🎮 Başla! WASD/Ok ile hareket', this.getBiome().accent);
@@ -222,10 +315,20 @@ G.Engine = {
     // Combo
     G.Combo.hit();
     const comboMult = G.Combo.getMultiplier();
+    const luckyBonus = this.upgrades.includes('lucky') ? 1.2 : 1;
 
     // Score
     let sc = (food.sc || 0) * comboMult;
     if (this.upgrades.includes('score2x')) sc *= 2;
+    // Critical: %15 şansla 2x
+    if (this.upgrades.includes('critical') && Math.random() < 0.15) {
+      sc *= 2;
+      this.notify('🎯 KRİTİK! x2', '#ff4400');
+    }
+    // Golden upgrade: altın yem +%20
+    if (this.upgrades.includes('golden') && food.type === 'golden') {
+      sc = Math.floor(sc * 1.2);
+    }
     this.score += sc;
 
     // XP
@@ -239,11 +342,16 @@ G.Engine = {
 
     // HP
     if (food.hp > 0) {
-      G.Snake.heal(food.hp);
+      let hpGain = food.hp;
+      // HeartFind: kalp yemlerinden +%15
+      if (this.upgrades.includes('heartFind') && food.type === 'heart') {
+        hpGain = Math.ceil(hpGain * 1.15);
+      }
+      G.Snake.heal(hpGain);
     }
 
-    // Boss damage
-    if (G.Boss.isActive()) G.Boss.hit(1);
+    // Boss damage (her yem 3 hasar)
+    if (G.Boss.isActive()) G.Boss.hit(3);
 
     // Effects
     const gs = this.GS;
@@ -255,20 +363,64 @@ G.Engine = {
     // Special effects
     if (food.effect === 'slow') {
       G.Snake.speed *= 0.7;
-      setTimeout(() => { G.Snake.speed = Math.min(12, 4 + this.level * 0.3); }, 3000);
+      const slowLevel = this.level;
+      setTimeout(() => { if (G.Snake.alive && this.state === 'play') G.Snake.speed = Math.min(10, 4 + slowLevel * 0.15); }, 3000);
     }
-    if (food.effect === 'bomb') G.Snake.takeDamage(2, 'bomb');
+    if (food.effect === 'bomb') {
+      // BlastGuard: patlamadan hasar almaz
+      if (this.upgrades.includes('blastGuard')) {
+        this.notify('🛡️ Patlama engellendi!', '#00ffcc');
+      } else {
+        G.Snake.takeDamage(2, 'bomb');
+      }
+    }
     if (food.effect === 'invincible') G.Snake.activateInvincible(3);
-    if (food.effect === 'coin') G.Save.addCoins(Math.floor(Math.random() * 5) + 1);
+    if (food.effect === 'coin') {
+      let coinAmount = Math.floor(Math.random() * 5) + 1;
+      // LuckyDrop: coin +%30
+      if (this.upgrades.includes('luckyDrop')) {
+        coinAmount = Math.ceil(coinAmount * 1.3);
+      }
+      G.Save.addCoins(coinAmount);
+    }
     if (food.effect === 'lucky') {
-      const r = Math.random();
+      const r = Math.random() * luckyBonus;
       if (r < 0.3) { this.score += 10; this.notify('+10 Skor!', '#ffaa00'); }
       else if (r < 0.6) { G.Snake.heal(2); this.notify('+2 HP!', '#ff44aa'); }
       else { this.xp += 30; this.notify('+30 XP!', '#aa44ff'); }
     }
 
+    // FoodBoom: yakındaki yemleri topla (recursive guard)
+    if (this.upgrades.includes('foodBoom') && !this._foodBoomActive) {
+      this._foodBoomActive = true;
+      const head = G.Snake.head();
+      const boomRange = 5;
+      const boomItems = [];
+      for (let i = G.Food.items.length - 1; i >= 0; i--) {
+        const f = G.Food.items[i];
+        if (f === food || !f.alive) continue;
+        if (G.Utils.dist(head.x, head.y, f.x, f.y) < boomRange) {
+          boomItems.push(i);
+        }
+      }
+      // Tersten sil (index kaymasını önle)
+      boomItems.sort((a, b) => b - a);
+      for (const idx of boomItems) {
+        const f = G.Food.items[idx];
+        if (f) {
+          this.collectFood(f);
+          G.Food.items.splice(idx, 1);
+        }
+      }
+      this._foodBoomActive = false;
+      if (boomItems.length > 0) this.notify('💣 Yem Patlaması! (+' + boomItems.length + ')', '#ff6600');
+    }
+
     // Stats
     G.Stats.onFood(food.type);
+
+    // Stats combo tracking
+    G.Stats.onCombo(G.Combo.count);
 
     // Combo effect
     if (G.Combo.count >= 3) G.Effects.shake(2, 0.1);
@@ -280,8 +432,8 @@ G.Engine = {
     if (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
-      this.xpNext = Math.floor(this.xpNext * 1.15);
-      G.Snake.speed = Math.min(12, 4 + this.level * 0.3);
+      this.xpNext = Math.floor(this.xpNext * 1.10);
+      G.Snake.speed = Math.min(10, 4 + this.level * 0.15);
 
       // Boss spawn every 5 levels
       if (this.level % 5 === 0 && this.level > 0) {
@@ -296,6 +448,9 @@ G.Engine = {
     this.state = 'dead';
     this.deadTimer = 0;
     G.Snake.hp = 0;
+    G.Combo.count = 0;
+    G.Combo.timer = 0;
+    G.Combo.multiplier = 1;
     G.Effects.shake(8, 0.4);
     G.Effects.flash('#ff0044', 0.3);
     G.Particles.burst(G.Snake.head().x * this.GS + this.GS / 2, G.Snake.head().y * this.GS + this.GS / 2, this.getBiome().accent, 10);

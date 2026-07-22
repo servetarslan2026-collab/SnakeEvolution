@@ -30,6 +30,7 @@ G.Save = {
         food: 0,
         games: 0,
         score: 0,
+        level: 0,
         completed: []
       }
     };
@@ -47,6 +48,12 @@ G.Save = {
           else if (typeof def[k] === 'object' && !Array.isArray(def[k])) {
             for (const kk in def[k]) {
               if (!(kk in this.data[k])) this.data[k][kk] = def[k][kk];
+            }
+            // Ensure settings has all keys
+            if (k === 'settings') {
+              for (const kk in def[k]) {
+                if (!(kk in this.data[k])) this.data[k][kk] = def[k][kk];
+              }
             }
           }
         }

@@ -7,41 +7,56 @@ G.UI = {
   drawMenu(ctx) {
     const E = G.Engine;
     const b = E.getBiome();
+    const now = Date.now();
+    const PI2 = Math.PI * 2;
 
-    // Title
+    // Animated background particles
+    ctx.fillStyle = b.accent + '08';
+    for (let i = 0; i < 30; i++) {
+      const px = (Math.sin(now / 3000 + i * 0.7) * 0.5 + 0.5) * E.W;
+      const py = (Math.cos(now / 4000 + i * 1.1) * 0.5 + 0.5) * E.H;
+      ctx.beginPath();
+      ctx.arc(px, py, 2 + Math.sin(now / 1000 + i) * 1, 0, PI2);
+      ctx.fill();
+    }
+
+    // Title with glow
     ctx.save();
     ctx.shadowColor = b.accent;
-    ctx.shadowBlur = 15;
+    ctx.shadowBlur = 20;
     ctx.fillStyle = b.accent;
-    ctx.font = '900 46px Orbitron';
+    ctx.font = '900 52px Orbitron';
     ctx.textAlign = 'center';
     ctx.fillText('SNAKE', E.W / 2 | 0, 90);
     ctx.fillStyle = b.accent2;
     ctx.shadowColor = b.accent2;
-    ctx.fillText('EVOLUTION', E.W / 2 | 0, 135);
+    ctx.shadowBlur = 25;
+    ctx.fillText('EVOLUTION', E.W / 2 | 0, 140);
     ctx.restore();
 
-    // Line
-    const lg = ctx.createLinearGradient(E.W / 2 - 180, 0, E.W / 2 + 180, 0);
+    // Animated line
+    const lg = ctx.createLinearGradient(E.W / 2 - 200, 0, E.W / 2 + 200, 0);
+    const lineOffset = (now / 1000) % 1;
     lg.addColorStop(0, b.accent + '00');
-    lg.addColorStop(0.5, b.accent);
-    lg.addColorStop(1, b.accent + '00');
+    lg.addColorStop(0.3 + lineOffset * 0.2, b.accent);
+    lg.addColorStop(0.7 - lineOffset * 0.2, b.accent2);
+    lg.addColorStop(1, b.accent2 + '00');
     ctx.strokeStyle = lg;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(E.W / 2 - 180, 155);
-    ctx.lineTo(E.W / 2 + 180, 155);
+    ctx.moveTo(E.W / 2 - 200, 160);
+    ctx.lineTo(E.W / 2 + 200, 160);
     ctx.stroke();
 
     // Subtitle
-    ctx.fillStyle = '#55667788';
-    ctx.font = '12px Rajdhani';
+    ctx.fillStyle = '#556677aa';
+    ctx.font = '13px Rajdhani';
     ctx.textAlign = 'center';
-    ctx.fillText('A ROGUELIKE SNAKE EXPERIENCE', E.W / 2 | 0, 170);
+    ctx.fillText('A ROGUELIKE SNAKE EXPERIENCE', E.W / 2 | 0, 178);
 
     // Buttons
     const btns = ['▶  PLAY', '📖  HOW TO PLAY', '🎨  SKINS', '⚙  SETTINGS'];
-    const sy = 210, sp = 46, bw = 260, bh = 38;
+    const sy = 220, sp = 50, bw = 280, bh = 42;
 
     for (let i = 0; i < 4; i++) {
       const y = sy + i * sp;
@@ -49,29 +64,44 @@ G.UI = {
       const bx = E.W / 2 - bw / 2;
 
       ctx.save();
+
+      // Button background
       if (sel) {
-        ctx.fillStyle = b.accent + '15';
+        // Selected: gradient fill
+        const btnG = ctx.createLinearGradient(bx, y - bh / 2, bx + bw, y - bh / 2);
+        btnG.addColorStop(0, b.accent + '22');
+        btnG.addColorStop(0.5, b.accent + '11');
+        btnG.addColorStop(1, b.accent + '05');
+        ctx.fillStyle = btnG;
         ctx.fillRect(bx, y - bh / 2, bw, bh);
+        // Left accent bar
         ctx.fillStyle = b.accent;
-        ctx.fillRect(bx, y - bh / 2 + 4, 2, bh - 8);
+        ctx.fillRect(bx, y - bh / 2 + 4, 3, bh - 8);
+        // Right glow
+        ctx.fillStyle = b.accent + '11';
+        ctx.fillRect(bx + bw - 3, y - bh / 2 + 4, 3, bh - 8);
       }
-      ctx.strokeStyle = sel ? b.accent + '44' : '#fff1';
+
+      ctx.strokeStyle = sel ? b.accent + '66' : '#ffffff11';
       ctx.lineWidth = 1;
       ctx.strokeRect(bx, y - bh / 2, bw, bh);
+
       ctx.fillStyle = sel ? b.accent : '#667788';
-      ctx.font = (sel ? 'bold ' : '') + '15px Rajdhani';
+      ctx.font = (sel ? 'bold ' : '') + '16px Rajdhani';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText(btns[i], E.W / 2 | 0, y | 0);
       ctx.restore();
     }
 
-    // Stats
-    ctx.fillStyle = '#333344';
+    // Stats bar
+    ctx.fillStyle = '#33334488';
+    ctx.fillRect(0, E.H - 50, E.W, 50);
+    ctx.fillStyle = '#445566';
     ctx.font = '11px monospace';
     ctx.textAlign = 'left';
-    ctx.fillText('High Score: ' + G.Save.data.highScore + ' | Coins: ' + G.Save.data.coins, 10, E.H - 40);
-    ctx.fillText('Games: ' + G.Save.data.totalGames + ' | Level: ' + (G.Save.data.maxLevel || 0), 10, E.H - 28);
+    ctx.fillText('High Score: ' + G.Save.data.highScore + '  |  Coins: ' + G.Save.data.coins, 15, E.H - 35);
+    ctx.fillText('Games: ' + G.Save.data.totalGames + '  |  Max Level: ' + (G.Save.data.maxLevel || 0), 15, E.H - 22);
 
     // Günlük görevler
     const today = new Date().toISOString().slice(0, 10);
@@ -79,15 +109,18 @@ G.UI = {
       const dq = G.Save.data.dailyQuests;
       ctx.fillStyle = '#44ff4488';
       ctx.font = '10px monospace';
-      ctx.fillText('Görevler: Yem ' + (dq.food || 0) + '/50 | Oyun ' + (dq.games || 0) + '/3', 10, E.H - 16);
+      ctx.fillText('📋 Görevler: Yem ' + (dq.food || 0) + '/50  |  Oyun ' + (dq.games || 0) + '/3', 15, E.H - 8);
     }
 
-    ctx.fillText('v5.0', 10, E.H - 6);
+    ctx.fillStyle = '#334';
+    ctx.font = '10px monospace';
+    ctx.textAlign = 'right';
+    ctx.fillText('v5.0', E.W - 15, E.H - 35);
 
     ctx.fillStyle = '#55667788';
     ctx.font = '11px Rajdhani';
     ctx.textAlign = 'center';
-    ctx.fillText('↑↓ Navigate  •  ENTER Select', E.W / 2 | 0, E.H - 6);
+    ctx.fillText('↑↓ Navigate  •  ENTER Select', E.W / 2 | 0, E.H - 8);
   },
 
   drawHUD(ctx) {
@@ -95,59 +128,136 @@ G.UI = {
     const b = E.getBiome();
     const S = G.Snake;
 
+    // HUD background strip
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0, 0, E.W, 75);
+    ctx.fillStyle = b.accent + '22';
+    ctx.fillRect(0, 74, E.W, 1);
+
     // Score
     ctx.fillStyle = b.accent;
-    ctx.font = 'bold 20px monospace';
+    ctx.font = 'bold 22px Orbitron';
     ctx.textAlign = 'left';
-    ctx.fillText('SKOR: ' + E.score, 15, 25);
+    ctx.fillText(E.score, 15, 28);
+    ctx.fillStyle = '#556677';
+    ctx.font = '10px Rajdhani';
+    ctx.fillText('SKOR', 15, 12);
 
     // Level
-    ctx.fillStyle = '#888899';
-    ctx.font = '14px Rajdhani';
-    ctx.fillText('LVL ' + E.level, 15, 45);
+    ctx.fillStyle = '#ffaa00';
+    ctx.font = 'bold 14px Orbitron';
+    ctx.fillText('LVL ' + E.level, 15, 48);
 
     // XP bar
-    const bw = 100, bh = 4, bx = 55, by = 40;
-    ctx.fillStyle = '#1a1a2a';
+    const bw = 100, bh = 5, bx = 70, by = 43;
+    ctx.fillStyle = '#0a0a1a';
     ctx.fillRect(bx, by, bw, bh);
-    ctx.fillStyle = b.accent;
     const xpPct = E.xpNext > 0 ? E.xp / E.xpNext : 0;
+    const xpG = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    xpG.addColorStop(0, b.accent);
+    xpG.addColorStop(1, b.accent2);
+    ctx.fillStyle = xpG;
     ctx.fillRect(bx, by, bw * xpPct, bh);
+    ctx.fillStyle = 'rgba(255,255,255,0.2)';
+    ctx.fillRect(bx, by, bw * xpPct, bh / 2);
 
-    // Hearts (FIXED: always draw based on current hp)
+    // Hearts (drawn manually for consistent rendering)
     for (let i = 0; i < S.maxHp; i++) {
-      ctx.fillStyle = i < S.hp ? '#ff44aa' : '#333344';
-      ctx.font = '13px Arial';
-      ctx.fillText('❤️', 16 + i * 18, 62);
+      const filled = i < S.hp;
+      const hx = 18 + i * 16;
+      const hy = 65;
+      const hsz = 5;
+      ctx.save();
+      if (filled) {
+        ctx.fillStyle = '#ff2266';
+        ctx.shadowColor = '#ff2266';
+        ctx.shadowBlur = 6;
+      } else {
+        ctx.fillStyle = '#441122';
+        ctx.shadowBlur = 0;
+      }
+      ctx.beginPath();
+      ctx.moveTo(hx, hy + hsz * 0.3);
+      ctx.bezierCurveTo(hx, hy - hsz * 0.3, hx - hsz, hy - hsz * 0.3, hx - hsz, hy + hsz * 0.1);
+      ctx.bezierCurveTo(hx - hsz, hy + hsz * 0.6, hx, hy + hsz, hx, hy + hsz);
+      ctx.bezierCurveTo(hx, hy + hsz, hx + hsz, hy + hsz * 0.6, hx + hsz, hy + hsz * 0.1);
+      ctx.bezierCurveTo(hx + hsz, hy - hsz * 0.3, hx, hy - hsz * 0.3, hx, hy + hsz * 0.3);
+      ctx.fill();
+      if (filled) {
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(hx - hsz * 0.3, hy - hsz * 0.1, hsz * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Border for empty hearts
+      if (!filled) {
+        ctx.strokeStyle = '#662233';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy + hsz * 0.3);
+        ctx.bezierCurveTo(hx, hy - hsz * 0.3, hx - hsz, hy - hsz * 0.3, hx - hsz, hy + hsz * 0.1);
+        ctx.bezierCurveTo(hx - hsz, hy + hsz * 0.6, hx, hy + hsz, hx, hy + hsz);
+        ctx.bezierCurveTo(hx, hy + hsz, hx + hsz, hy + hsz * 0.6, hx + hsz, hy + hsz * 0.1);
+        ctx.bezierCurveTo(hx + hsz, hy - hsz * 0.3, hx, hy - hsz * 0.3, hx, hy + hsz * 0.3);
+        ctx.stroke();
+      }
+      ctx.restore();
     }
 
-    // Combo
+    // Combo (center)
     if (G.Combo.count >= 3) {
+      ctx.save();
+      ctx.shadowColor = '#ffaa00';
+      ctx.shadowBlur = 10;
       ctx.fillStyle = '#ffaa00';
-      ctx.font = 'bold 20px Orbitron';
+      ctx.font = 'bold 22px Orbitron';
       ctx.textAlign = 'center';
-      ctx.fillText('x' + G.Combo.count + ' COMBO', E.W / 2 | 0, 45);
+      ctx.fillText('x' + G.Combo.count, E.W / 2 | 0, 30);
+      ctx.restore();
+      ctx.fillStyle = '#ffcc4488';
+      ctx.font = '10px Rajdhani';
+      ctx.textAlign = 'center';
+      ctx.fillText('COMBO', E.W / 2 | 0, 42);
       if (G.Combo.multiplier > 1) {
         ctx.fillStyle = '#fff';
-        ctx.font = 'bold 13px Orbitron';
-        ctx.fillText('(' + G.Combo.multiplier + 'x)', E.W / 2 | 0, 60);
+        ctx.font = 'bold 12px Orbitron';
+        ctx.fillText('×' + G.Combo.multiplier, E.W / 2 | 0, 56);
       }
     }
 
-    // Boss HP
+    // Biome name (right)
+    ctx.fillStyle = b.accent + '66';
+    ctx.font = '10px Rajdhani';
+    ctx.textAlign = 'right';
+    ctx.fillText(b.name.toUpperCase(), E.W - 15, 12);
+
+    // FPS
+    ctx.fillStyle = '#333';
+    ctx.font = '9px monospace';
+    ctx.fillText(E.fps + ' FPS', E.W - 15, 24);
+
+    // Time
+    const mins = Math.floor(E.gameTime / 60);
+    const secs = Math.floor(E.gameTime % 60);
+    ctx.fillStyle = '#445566';
+    ctx.font = '10px monospace';
+    ctx.fillText(mins + ':' + (secs < 10 ? '0' : '') + secs, E.W - 15, 36);
+
+    // Boss HP (bottom center)
     if (G.Boss.isActive()) {
       const bw2 = E.W * 0.5, bh2 = 8, bx2 = (E.W - bw2) / 2, by2 = E.H - 30;
       ctx.fillStyle = '#0a0a1a';
       ctx.fillRect(bx2 - 1, by2 - 1, bw2 + 2, bh2 + 2);
-      ctx.fillStyle = '#ff0044';
+      ctx.strokeStyle = '#ff004444';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(bx2 - 1, by2 - 1, bw2 + 2, bh2 + 2);
+      const bossG = ctx.createLinearGradient(bx2, 0, bx2 + bw2, 0);
+      bossG.addColorStop(0, '#ff0044');
+      bossG.addColorStop(1, '#ff4400');
+      ctx.fillStyle = bossG;
       ctx.fillRect(bx2, by2, bw2 * (G.Boss.active.hp / G.Boss.active.maxHp), bh2);
     }
-
-    // FPS
-    ctx.fillStyle = '#333';
-    ctx.font = '10px monospace';
-    ctx.textAlign = 'right';
-    ctx.fillText(E.fps + ' FPS', E.W - 10, 14);
   },
 
   drawMiniMap(ctx) {
@@ -356,10 +466,11 @@ G.UI = {
     ctx.fillText('AYARLAR', E.W / 2 | 0, 80);
 
     const items = [
-      { label: 'Ses', val: Math.round(G.Save.data.settings.sound * 100) + '%' },
-      { label: 'Ekran Sarsıntısı', val: G.Save.data.settings.shake ? 'AÇIK' : 'KAPALI' },
-      { label: 'Parçacıklar', val: G.Save.data.settings.particles ? 'AÇIK' : 'KAPALI' },
-      { label: 'Kaydı Sıfırla', val: '' }
+      { label: 'Ses', val: Math.round(G.Save.data.settings.sound * 100) + '%', type: 'slider' },
+      { label: 'Ekran Sarsıntısı', val: G.Save.data.settings.shake ? 'AÇIK' : 'KAPALI', type: 'toggle' },
+      { label: 'Parçacıklar', val: G.Save.data.settings.particles ? 'AÇIK' : 'KAPALI', type: 'toggle' },
+      { label: 'Parlama Efekti', val: G.Save.data.settings.glow ? 'AÇIK' : 'KAPALI', type: 'toggle' },
+      { label: '⚠️ Kaydı Sıfırla', val: '', type: 'action' }
     ];
 
     let y = 140;
@@ -369,6 +480,10 @@ G.UI = {
       ctx.font = (sel ? 'bold ' : '') + '16px Rajdhani';
       ctx.textAlign = 'center';
       ctx.fillText(items[i].label + (items[i].val ? ': ' + items[i].val : ''), E.W / 2 | 0, y);
+      if (sel) {
+        ctx.fillStyle = E.getBiome().accent + '44';
+        ctx.fillRect(E.W / 2 - 120, y - 14, 240, 20);
+      }
       y += 30;
     }
 

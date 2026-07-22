@@ -51,10 +51,11 @@ G.Boss = {
       G.Engine.notify('💀 FAZ 3! Çok tehlikeli!', '#ff0044');
     }
 
-    if (this.active.hp <= 0) {
-      G.Particles.burst(this.active.rx * G.Engine.GS + G.Engine.GS / 2, this.active.ry * G.Engine.GS + G.Engine.GS / 2, '#ffaa00', 20);
+    if (this.active.hp <= 0 && !this.active.dying) {
+      this.active.dying = true;
+      this.active.deathTimer = 1.5;
+      this.active.alive = false;
       G.Engine.notify('🏆 ' + this.active.name + ' YENİLDİ! +50', '#ffaa00');
-      this.active = null;
       G.Engine.score += 50;
       G.Stats.onBossKill();
       G.Audio.playTone(800, 0.2);
@@ -62,8 +63,26 @@ G.Boss = {
   },
 
   update(dt) {
-    if (!this.active || !this.active.alive) return;
+    if (!this.active) return;
     const E = G.Engine;
+
+    // Ölüm animasyonu
+    if (this.active.dying) {
+      this.active.deathTimer -= dt;
+      this.active.anim += dt;
+      // Patlama parçacıkları
+      if (Math.random() < 0.3) {
+        const gs = E.GS;
+        const bx = this.active.rx * gs + gs / 2 + (Math.random() - 0.5) * 40;
+        const by = this.active.ry * gs + gs / 2 + (Math.random() - 0.5) * 40;
+        G.Particles.burst(bx, by, this.active.color, 4);
+      }
+      if (this.active.deathTimer <= 0) {
+        this.active = null;
+      }
+      return;
+    }
+    if (!this.active.alive) return;
     this.active.anim += dt;
 
     // Faz bazlı hareket hızı
@@ -96,8 +115,9 @@ G.Boss = {
     this.active.x = G.Utils.clamp(this.active.x, 2, E.W / E.GS - 3);
     this.active.y = G.Utils.clamp(this.active.y, 2, E.H / E.GS - 3);
 
-    // Player collision
-    if (G.Snake.invTimer <= 0 && G.Utils.dist(G.Snake.head().x, G.Snake.head().y, Math.round(this.active.x), Math.round(this.active.y)) < 2) {
+    // Player collision (büyük hitbox)
+    const bossDist = G.Utils.dist(G.Snake.head().x, G.Snake.head().y, this.active.x, this.active.y);
+    if (G.Snake.invTimer <= 0 && bossDist < 2.5) {
       G.Snake.takeDamage(1, 'boss');
     }
 
@@ -114,63 +134,221 @@ G.Boss = {
   },
 
   draw(ctx) {
-    if (!this.active || !this.active.alive) return;
+    if (!this.active) return;
+    if (!this.active.alive && !this.active.dying) return;
     const E = G.Engine;
     const gs = E.GS;
-    const cx = this.active.rx * gs + gs / 2;
-    const cy = this.active.ry * gs + gs / 2;
-    const sz = gs * 1.3;
+    const b = this.active;
+    let cx = b.rx * gs + gs / 2;
+    let cy = b.ry * gs + gs / 2;
+    const sz = gs * 1.5;
+    const t = b.anim;
+    const PI2 = Math.PI * 2;
+    const glowOn = G.Save.data.settings.glow !== false;
+    const hpPct = b.hp / b.maxHp;
 
     ctx.save();
 
-    // Body
-    const g = ctx.createRadialGradient(cx - 4, cy - 4, 2, cx, cy, sz);
-    g.addColorStop(0, '#ff88aa');
-    g.addColorStop(0.5, this.active.color);
-    g.addColorStop(1, '#880022');
-    ctx.fillStyle = g;
+    // ============ DEATH ANIMATION ============
+    if (b.dying) {
+      const deathPct = b.deathTimer / 1.5;
+      ctx.globalAlpha = deathPct;
+      // Titreşim
+      const shake = (1 - deathPct) * 8;
+      cx += (Math.random() - 0.5) * shake;
+      cy += (Math.random() - 0.5) * shake;
+      // Genişleme
+      const expand = 1 + (1 - deathPct) * 0.5;
+      ctx.translate(cx, cy);
+      ctx.scale(expand, expand);
+      ctx.translate(-cx, -cy);
+    }
+
+    // ============ SHADOW ============
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.beginPath();
-    ctx.arc(cx, cy, sz, 0, E.PI2);
+    ctx.ellipse(cx + 3, cy + sz + 5, sz * 0.8, sz * 0.2, 0, 0, PI2);
     ctx.fill();
 
-    // Pattern
-    ctx.strokeStyle = this.active.color + '44';
-    ctx.lineWidth = 2;
-    for (let i = 0; i < 3; i++) {
+    // ============ DANGER AURA ============
+    if (glowOn) {
+      const auraSz = sz * 2.5 + Math.sin(t * 2) * 10;
+      const aura = ctx.createRadialGradient(cx, cy, sz * 0.5, cx, cy, auraSz);
+      aura.addColorStop(0, b.color + '44');
+      aura.addColorStop(0.5, b.color + '11');
+      aura.addColorStop(1, b.color + '00');
+      ctx.fillStyle = aura;
       ctx.beginPath();
-      ctx.arc(cx, cy, sz * (0.3 + i * 0.2), this.active.anim + i * 2, this.active.anim + i * 2 + 4);
+      ctx.arc(cx, cy, auraSz, 0, PI2);
+      ctx.fill();
+    }
+
+    // ============ ORBITING RINGS ============
+    ctx.strokeStyle = b.color + '33';
+    ctx.lineWidth = 1.5;
+    for (let r = 0; r < 3; r++) {
+      const rSz = sz * (0.6 + r * 0.3);
+      const rSpeed = (r + 1) * 0.5;
+      ctx.beginPath();
+      ctx.arc(cx, cy, rSz, t * rSpeed + r, t * rSpeed + r + 3.5);
       ctx.stroke();
     }
 
-    // Eyes
-    ctx.fillStyle = '#fff';
+    // ============ PHASE PARTICLES ============
+    if (b.phase >= 1) {
+      for (let p = 0; p < 6; p++) {
+        const pa = t * 2 + p * 1.047;
+        const pr = sz * 1.3 + Math.sin(t * 3 + p) * 5;
+        const px = cx + Math.cos(pa) * pr;
+        const py = cy + Math.sin(pa) * pr;
+        ctx.fillStyle = b.phase >= 2 ? '#ff004488' : '#ff444444';
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + b.phase, 0, PI2);
+        ctx.fill();
+      }
+    }
+
+    // ============ MAIN BODY ============
+    const bodyG = ctx.createRadialGradient(cx - sz * 0.2, cy - sz * 0.2, sz * 0.1, cx, cy, sz);
+    bodyG.addColorStop(0, '#ffffff');
+    bodyG.addColorStop(0.2, b.color);
+    bodyG.addColorStop(0.7, b.color);
+    bodyG.addColorStop(1, '#220011');
+    ctx.fillStyle = bodyG;
     ctx.beginPath();
-    ctx.arc(cx - sz * 0.3, cy - sz * 0.2, 6, 0, E.PI2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx + sz * 0.3, cy - sz * 0.2, 6, 0, E.PI2);
-    ctx.fill();
-    ctx.fillStyle = this.active.color;
-    ctx.beginPath();
-    ctx.arc(cx - sz * 0.3, cy - sz * 0.2, 3, 0, E.PI2);
-    ctx.fill();
-    ctx.beginPath();
-    ctx.arc(cx + sz * 0.3, cy - sz * 0.2, 3, 0, E.PI2);
+    ctx.arc(cx, cy, sz, 0, PI2);
     ctx.fill();
 
-    // HP bar
-    const bw = gs * 5;
-    const bh = 8;
-    const bx = cx - bw / 2;
-    const by = cy - sz - 15;
-    ctx.fillStyle = '#0a0a1a';
-    ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-    ctx.fillStyle = '#ff0044';
-    ctx.fillRect(bx, by, bw * (this.active.hp / this.active.maxHp), bh);
+    // Body border
+    ctx.strokeStyle = b.color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, sz, 0, PI2);
+    ctx.stroke();
+
+    // ============ FACE ============
+    // Eyes
+    const eyeOx = sz * 0.35;
+    const eyeOy = sz * 0.2;
+    const eyeSz = sz * 0.18;
+
+    // Eye sockets
+    ctx.fillStyle = '#110011';
+    ctx.beginPath();
+    ctx.arc(cx - eyeOx, cy - eyeOy, eyeSz + 3, 0, PI2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + eyeOx, cy - eyeOy, eyeSz + 3, 0, PI2);
+    ctx.fill();
+
+    // Eye whites
     ctx.fillStyle = '#fff';
-    ctx.font = 'bold 11px Orbitron';
+    ctx.beginPath();
+    ctx.arc(cx - eyeOx, cy - eyeOy, eyeSz, 0, PI2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + eyeOx, cy - eyeOy, eyeSz, 0, PI2);
+    ctx.fill();
+
+    // Iris (phase-based color)
+    const irisColor = b.phase >= 2 ? '#ff0044' : b.phase >= 1 ? '#ff4400' : b.color;
+    const irisG1 = ctx.createRadialGradient(cx - eyeOx, cy - eyeOy, 0, cx - eyeOx, cy - eyeOy, eyeSz * 0.7);
+    irisG1.addColorStop(0, '#fff');
+    irisG1.addColorStop(0.4, irisColor);
+    irisG1.addColorStop(1, '#220000');
+    ctx.fillStyle = irisG1;
+    ctx.beginPath();
+    ctx.arc(cx - eyeOx, cy - eyeOy, eyeSz * 0.7, 0, PI2);
+    ctx.fill();
+
+    const irisG2 = ctx.createRadialGradient(cx + eyeOx, cy - eyeOy, 0, cx + eyeOx, cy - eyeOy, eyeSz * 0.7);
+    irisG2.addColorStop(0, '#fff');
+    irisG2.addColorStop(0.4, irisColor);
+    irisG2.addColorStop(1, '#220000');
+    ctx.fillStyle = irisG2;
+    ctx.beginPath();
+    ctx.arc(cx + eyeOx, cy - eyeOy, eyeSz * 0.7, 0, PI2);
+    ctx.fill();
+
+    // Pupils
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.arc(cx - eyeOx, cy - eyeOy, eyeSz * 0.3, 0, PI2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + eyeOx, cy - eyeOy, eyeSz * 0.3, 0, PI2);
+    ctx.fill();
+
+    // Eye highlights
+    ctx.fillStyle = 'rgba(255,255,255,0.7)';
+    ctx.beginPath();
+    ctx.arc(cx - eyeOx - 2, cy - eyeOy - 2, eyeSz * 0.2, 0, PI2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx + eyeOx - 2, cy - eyeOy - 2, eyeSz * 0.2, 0, PI2);
+    ctx.fill();
+
+    // Mouth (phase-based)
+    if (b.phase >= 1) {
+      ctx.strokeStyle = '#220011';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy + sz * 0.15, sz * 0.3, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+      if (b.phase >= 2) {
+        // Dişler
+        ctx.fillStyle = '#fff';
+        for (let tooth = 0; tooth < 4; tooth++) {
+          const tx = cx - sz * 0.2 + tooth * sz * 0.13;
+          ctx.fillRect(tx, cy + sz * 0.25, 3, 5);
+        }
+      }
+    }
+
+    // ============ HP BAR (ölüm anında gizle) ============
+    if (b.dying) { ctx.restore(); return; }
+    const bw = gs * 6;
+    const bh = 10;
+    const bx = cx - bw / 2;
+    const by = cy - sz - 20;
+
+    // Bar background
+    ctx.fillStyle = '#0a0a1a';
+    ctx.fillRect(bx - 2, by - 2, bw + 4, bh + 4);
+    ctx.strokeStyle = b.color + '88';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx - 2, by - 2, bw + 4, bh + 4);
+
+    // Bar fill (gradient)
+    const barG = ctx.createLinearGradient(bx, 0, bx + bw, 0);
+    barG.addColorStop(0, '#ff0044');
+    barG.addColorStop(0.5, hpPct > 0.5 ? '#ff4400' : '#ff0044');
+    barG.addColorStop(1, hpPct > 0.25 ? '#ffaa00' : '#ff0022');
+    ctx.fillStyle = barG;
+    ctx.fillRect(bx, by, bw * hpPct, bh);
+
+    // Bar shine
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.fillRect(bx, by, bw * hpPct, bh / 2);
+
+    // Boss name
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 12px Orbitron';
     ctx.textAlign = 'center';
-    ctx.fillText(this.active.name, cx, by - 4);
+    ctx.fillText(b.name, cx, by - 5);
+
+    // HP percentage
+    ctx.fillStyle = '#ffaaaa';
+    ctx.font = 'bold 9px monospace';
+    ctx.fillText(Math.ceil(hpPct * 100) + '%', cx, by + bh - 1);
+
+    // Phase indicator
+    if (b.phase > 0) {
+      const phaseColors = ['', '#ff4400', '#ff0044'];
+      ctx.fillStyle = phaseColors[b.phase];
+      ctx.font = 'bold 10px Orbitron';
+      ctx.fillText('FAZ ' + (b.phase + 1), cx, by - 15);
+    }
 
     ctx.restore();
   }

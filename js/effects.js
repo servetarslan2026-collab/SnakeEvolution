@@ -41,6 +41,11 @@ G.Effects = {
   },
 
   drawFlash(ctx) {
+    // Shake setting check
+    if (!G.Save.data.settings.shake) {
+      this.shakeX = 0;
+      this.shakeY = 0;
+    }
     if (this.flashTimer > 0 && this.flashColor) {
       ctx.globalAlpha = this.flashTimer;
       ctx.fillStyle = this.flashColor;

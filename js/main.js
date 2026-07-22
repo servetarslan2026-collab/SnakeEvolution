@@ -32,10 +32,10 @@ window.G = window.G || {};
       const c = e.code;
       const E = G.Engine;
 
-      // Direction keys
+      // Direction keys — kuyruğa ekle (hızlı tuş basmalarını yakalar)
       if (c === 'ArrowUp' || c === 'KeyW') {
         e.preventDefault();
-        if (E.state === 'play') G.Snake.nextDir = { x: 0, y: -1 };
+        if (E.state === 'play') { const d = { x: 0, y: -1 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
         if (E.state === 'menu') E.selectedBtn = (E.selectedBtn - 1 + 4) % 4;
         if (E.state === 'howtoplay') E.howToPlayPage = Math.max(0, E.howToPlayPage - 1);
         if (E.state === 'settings') E.settingsIdx = Math.max(0, E.settingsIdx - 1);
@@ -43,21 +43,33 @@ window.G = window.G || {};
       }
       if (c === 'ArrowDown' || c === 'KeyS') {
         e.preventDefault();
-        if (E.state === 'play') G.Snake.nextDir = { x: 0, y: 1 };
+        if (E.state === 'play') { const d = { x: 0, y: 1 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
         if (E.state === 'menu') E.selectedBtn = (E.selectedBtn + 1) % 4;
         if (E.state === 'howtoplay') E.howToPlayPage = Math.min(2, E.howToPlayPage + 1);
-        if (E.state === 'settings') E.settingsIdx = Math.min(3, E.settingsIdx + 1);
+        if (E.state === 'settings') E.settingsIdx = Math.min(4, E.settingsIdx + 1);
         if (E.state === 'skins') E.skinScroll = Math.min(G.Config.SKINS.length - 1, E.skinScroll + 1);
       }
       if (c === 'ArrowLeft' || c === 'KeyA') {
         e.preventDefault();
-        if (E.state === 'play') G.Snake.nextDir = { x: -1, y: 0 };
+        if (E.state === 'play') { const d = { x: -1, y: 0 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
         if (E.state === 'levelup') E.selectedUpgrade = (E.selectedUpgrade - 1 + 3) % 3;
+        if (E.state === 'settings') {
+          if (E.settingsIdx === 0) { G.Save.data.settings.sound = Math.max(0, G.Save.data.settings.sound - 0.1); G.Save.write(); }
+          if (E.settingsIdx === 1) { G.Save.data.settings.shake = !G.Save.data.settings.shake; G.Save.write(); }
+          if (E.settingsIdx === 2) { G.Save.data.settings.particles = !G.Save.data.settings.particles; G.Save.write(); }
+          if (E.settingsIdx === 3) { G.Save.data.settings.glow = !G.Save.data.settings.glow; G.Save.write(); }
+        }
       }
       if (c === 'ArrowRight' || c === 'KeyD') {
         e.preventDefault();
-        if (E.state === 'play') G.Snake.nextDir = { x: 1, y: 0 };
+        if (E.state === 'play') { const d = { x: 1, y: 0 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
         if (E.state === 'levelup') E.selectedUpgrade = (E.selectedUpgrade + 1) % 3;
+        if (E.state === 'settings') {
+          if (E.settingsIdx === 0) { G.Save.data.settings.sound = Math.min(1, G.Save.data.settings.sound + 0.1); G.Save.write(); }
+          if (E.settingsIdx === 1) { G.Save.data.settings.shake = !G.Save.data.settings.shake; G.Save.write(); }
+          if (E.settingsIdx === 2) { G.Save.data.settings.particles = !G.Save.data.settings.particles; G.Save.write(); }
+          if (E.settingsIdx === 3) { G.Save.data.settings.glow = !G.Save.data.settings.glow; G.Save.write(); }
+        }
       }
 
       // SPACE: only dash during gameplay
@@ -83,7 +95,12 @@ window.G = window.G || {};
         } else if (E.state === 'howtoplay') {
           E.state = 'menu';
         } else if (E.state === 'settings') {
-          E.state = 'menu';
+          if (E.settingsIdx === 4) {
+            // Kaydı sıfırla
+            G.Save.reset();
+          } else {
+            E.state = 'menu';
+          }
         } else if (E.state === 'skins') {
           const skin = G.Config.SKINS[E.skinScroll];
           if (G.Save.data.unlockedSkins.includes(skin.id)) {
@@ -153,12 +170,12 @@ window.G = window.G || {};
         if (E.state === 'howtoplay' || E.state === 'settings' || E.state === 'skins') E.state = 'menu';
         if (E.state === 'paused') E.state = 'play';
       } else if (d > 30 && E.state === 'play') {
-        // Swipe
-        if (Math.abs(dx) > Math.abs(dy)) {
-          G.Snake.nextDir = { x: dx > 0 ? 1 : -1, y: 0 };
-        } else {
-          G.Snake.nextDir = { x: 0, y: dy > 0 ? 1 : -1 };
-        }
+        // Swipe — kuyruğa ekle
+        const dir = Math.abs(dx) > Math.abs(dy)
+          ? { x: dx > 0 ? 1 : -1, y: 0 }
+          : { x: 0, y: dy > 0 ? 1 : -1 };
+        G.Snake.dirQueue.push(dir);
+        if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift();
       }
       touchStart = null;
     }, { passive: false });

@@ -19,25 +19,25 @@ G.Config = {
   ],
 
   FOOD_TYPES: [
-    { type: 'normal', color: '#ff2244', w: 40, sc: 1, len: 1, xp: 5, hp: 0, icon: '🍎' },
-    { type: 'golden', color: '#ffaa00', w: 10, sc: 5, len: 2, xp: 15, hp: 0, icon: '⭐' },
+    { type: 'normal', color: '#ff2244', w: 30, sc: 1, len: 1, xp: 5, hp: 0, icon: '🍎' },
+    { type: 'golden', color: '#ffaa00', w: 12, sc: 5, len: 2, xp: 15, hp: 0, icon: '⭐' },
     { type: 'crystal', color: '#aa44ff', w: 10, sc: 0, len: 0, xp: 25, hp: 0, icon: '💎' },
-    { type: 'heart', color: '#ff44aa', w: 10, sc: 0, len: 0, xp: 0, hp: 1, icon: '❤️' },
-    { type: 'clock', color: '#4488ff', w: 6, sc: 0, len: 0, xp: 3, hp: 0, icon: '⏱️', effect: 'slow' },
-    { type: 'bomb', color: '#ff6600', w: 2, sc: 0, len: 0, xp: 0, hp: 0, icon: '💣', effect: 'bomb' },
-    { type: 'poison', color: '#44ff00', w: 3, sc: 0, len: -2, xp: 0, hp: 0, icon: '☠️' },
-    { type: 'magnet', color: '#00ffcc', w: 5, sc: 0, len: 0, xp: 5, hp: 0, icon: '🧲', effect: 'magnet' },
-    { type: 'lucky', color: '#ffffff', w: 3, sc: 0, len: 0, xp: 10, hp: 0, icon: '🍀', effect: 'lucky' },
-    { type: 'star', color: '#ffffff', w: 3, sc: 0, len: 0, xp: 0, hp: 0, icon: '✨', effect: 'invincible' },
-    { type: 'coin', color: '#ffcc00', w: 7, sc: 2, len: 0, xp: 3, hp: 0, icon: '🪙', effect: 'coin' }
+    { type: 'heart', color: '#ff44aa', w: 12, sc: 0, len: 0, xp: 0, hp: 1, icon: '❤️' },
+    { type: 'clock', color: '#4488ff', w: 8, sc: 0, len: 0, xp: 3, hp: 0, icon: '⏱️', effect: 'slow' },
+    { type: 'bomb', color: '#ff6600', w: 4, sc: 0, len: 0, xp: 0, hp: 0, icon: '💣', effect: 'bomb' },
+    { type: 'poison', color: '#44ff00', w: 5, sc: 0, len: -2, xp: 0, hp: 0, icon: '☠️' },
+    { type: 'magnet', color: '#00ffcc', w: 8, sc: 0, len: 0, xp: 5, hp: 0, icon: '🧲', effect: 'magnet' },
+    { type: 'lucky', color: '#ffffff', w: 5, sc: 0, len: 0, xp: 10, hp: 0, icon: '🍀', effect: 'lucky' },
+    { type: 'star', color: '#ffffff', w: 5, sc: 0, len: 0, xp: 0, hp: 0, icon: '✨', effect: 'invincible' },
+    { type: 'coin', color: '#ffcc00', w: 10, sc: 2, len: 0, xp: 3, hp: 0, icon: '🪙', effect: 'coin' }
   ],
 
   ENEMY_TYPES: [
     { type: 'bug', speed: 1.5, hp: 1, color: '#ff2244', ai: 'wander' },
     { type: 'snake', speed: 2, hp: 1, color: '#44ff22', ai: 'chase' },
-    { type: 'bomber', speed: 2.5, hp: 1, color: '#ff8800', ai: 'wander' },
+    { type: 'bomber', speed: 2.5, hp: 1, color: '#ff8800', ai: 'bomber' },
     { type: 'drone', speed: 0, hp: 3, color: '#4488ff', ai: 'turret' },
-    { type: 'ghost', speed: 1, hp: 999, color: '#aaaaff', ai: 'ghost' },
+    { type: 'ghost', speed: 1, hp: 5, color: '#aaaaff', ai: 'ghost' },
     { type: 'chaser', speed: 2, hp: 2, color: '#ff4444', ai: 'chase' }
   ],
 

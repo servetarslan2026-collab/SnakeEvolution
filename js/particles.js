@@ -26,7 +26,7 @@ G.Particles = {
   },
 
   emit(x, y, vx, vy, life, sz, col) {
-    if (this.list.length > 150) return;
+    if (this.list.length >= 150) return;
     const p = this._getParticle();
     p.x = x; p.y = y; p.vx = vx; p.vy = vy;
     p.life = life; p.ml = life; p.sz = sz; p.col = col || '#fff';
@@ -64,6 +64,8 @@ G.Particles = {
   },
 
   draw(ctx) {
+    // Parçacıklar kapalıysa çizme
+    if (G.Save && G.Save.data && !G.Save.data.settings.particles) return;
     for (const p of this.list) {
       const a = p.life / p.ml;
       ctx.globalAlpha = a;
