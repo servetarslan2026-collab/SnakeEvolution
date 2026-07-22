@@ -373,7 +373,28 @@ G.Snake = {
       ctx.restore();
     }
 
-    // ============ BODY (kuyruktan kafaya) ============
+    // ============ CONNECTED BODY (bağlı segmentler) ============
+    // Önce gölge katmanı
+    if (glowOn) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (let i = len - 1; i >= 1; i--) {
+        const s = this.renderPos[i] || this.segments[i];
+        const px = s.x * gs + gs / 2;
+        const py = s.y * gs + gs / 2;
+        const segT = i / Math.max(1, len - 1);
+        const baseSz = thick ? (gs / 2 - 1) : (gs / 2 - 2);
+        const sz = baseSz * (1 - segT * 0.35);
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath();
+        ctx.arc(px + 2, py + 3, sz + 1, 0, E.PI2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Bağlı gövde çizimi (kuyruktan kafaya)
     for (let i = len - 1; i >= 1; i--) {
       const s = this.renderPos[i] || this.segments[i];
       const px = s.x * gs + gs / 2;
@@ -390,50 +411,88 @@ G.Snake = {
         ctx.globalAlpha = shimmer;
       }
 
-      // Shadow
-      ctx.fillStyle = 'rgba(0,0,0,0.25)';
-      ctx.beginPath();
-      ctx.ellipse(px + 2, py + 3, sz, sz * 0.6, 0, 0, E.PI2);
-      ctx.fill();
-
-      // Body segment
+      // Segment rengi
       const segHue = isRainbow ? (rainbowHue + i * 15) % 360 : 0;
       const headColor = isRainbow ? `hsl(${segHue},100%,50%)` : skin.head;
       const bodyColor = isRainbow ? `hsl(${segHue},80%,35%)` : skin.body;
-      const bg = ctx.createRadialGradient(px - sz * 0.3, py - sz * 0.3, 0, px, py, sz);
-      const lightColor = isRainbow ? `hsl(${segHue},100%,65%)` : this._lighten(skin.head, 30);
+
+      // Bağlantı çizgisi (önceki segmentle)
+      if (i < len - 1) {
+        const prev = this.renderPos[i + 1] || this.segments[i + 1];
+        const ppx = prev.x * gs + gs / 2;
+        const ppy = prev.y * gs + gs / 2;
+        const prevSegT = (i + 1) / Math.max(1, len - 1);
+        const prevSz = baseSz * (1 - prevSegT * 0.35);
+        const connW = Math.min(sz, prevSz) * 1.8;
+        ctx.strokeStyle = bodyColor;
+        ctx.lineWidth = connW;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(ppx, ppy);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+        // Bağlantı highlight
+        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+        ctx.lineWidth = connW * 0.6;
+        ctx.beginPath();
+        ctx.moveTo(ppx, ppy);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+      }
+
+      // Gövde segmenti (3D gradient)
+      const bg = ctx.createRadialGradient(px - sz * 0.3, py - sz * 0.35, 0, px, py, sz);
+      const lightColor = isRainbow ? `hsl(${segHue},100%,65%)` : this._lighten(skin.head, 40);
       bg.addColorStop(0, lightColor);
-      bg.addColorStop(0.5, headColor);
-      bg.addColorStop(1, bodyColor);
+      bg.addColorStop(0.4, headColor);
+      bg.addColorStop(0.8, bodyColor);
+      bg.addColorStop(1, this._darken(skin.body, 20));
       ctx.fillStyle = bg;
       ctx.beginPath();
       ctx.arc(px, py, sz, 0, E.PI2);
       ctx.fill();
 
-      // Scale pattern
+      // Pul deseni (diamond pattern)
       if (i % 2 === 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.08)';
+        ctx.fillStyle = 'rgba(255,255,255,0.1)';
         ctx.beginPath();
-        ctx.arc(px - 1, py - 1, sz * 0.5, 0, E.PI2);
+        ctx.moveTo(px, py - sz * 0.4);
+        ctx.lineTo(px + sz * 0.3, py);
+        ctx.lineTo(px, py + sz * 0.4);
+        ctx.lineTo(px - sz * 0.3, py);
+        ctx.closePath();
         ctx.fill();
-      } else {
+      }
+      if (i % 3 === 0) {
         ctx.fillStyle = 'rgba(0,0,0,0.08)';
         ctx.beginPath();
-        ctx.arc(px + 1, py + 1, sz * 0.5, 0, E.PI2);
+        ctx.arc(px + sz * 0.2, py + sz * 0.2, sz * 0.25, 0, E.PI2);
         ctx.fill();
       }
 
-      // Highlight rim
-      ctx.strokeStyle = 'rgba(255,255,255,0.12)';
-      ctx.lineWidth = 1;
+      // 3D highlight (üst)
+      ctx.fillStyle = 'rgba(255,255,255,0.15)';
       ctx.beginPath();
-      ctx.arc(px, py, sz - 1, -Math.PI * 0.7, -Math.PI * 0.2);
+      ctx.ellipse(px - sz * 0.15, py - sz * 0.25, sz * 0.35, sz * 0.2, -0.3, 0, E.PI2);
+      ctx.fill();
+
+      // Alt gölge
+      ctx.fillStyle = 'rgba(0,0,0,0.1)';
+      ctx.beginPath();
+      ctx.ellipse(px + sz * 0.1, py + sz * 0.3, sz * 0.3, sz * 0.15, 0.2, 0, E.PI2);
+      ctx.fill();
+
+      // Border (ince)
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.lineWidth = 0.5;
+      ctx.beginPath();
+      ctx.arc(px, py, sz, 0, E.PI2);
       ctx.stroke();
 
       // Tail effects
       if (E.upgrades.includes('fireTail') && i > len * 0.6) {
         const ft = (now / 100 + i) % (Math.PI * 2);
-        ctx.fillStyle = 'rgba(255,100,0,0.2)';
+        ctx.fillStyle = `rgba(255,100,0,${0.15 + Math.sin(ft) * 0.1})`;
         ctx.beginPath();
         ctx.arc(px + Math.sin(ft) * 2, py + Math.cos(ft) * 2, sz + 3, 0, E.PI2);
         ctx.fill();
@@ -443,9 +502,22 @@ G.Snake = {
         ctx.beginPath();
         ctx.arc(px, py, sz + 2, 0, E.PI2);
         ctx.fill();
+        // Buz kristalleri
+        if (i % 2 === 0) {
+          ctx.strokeStyle = 'rgba(0,200,255,0.3)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(px - sz, py);
+          ctx.lineTo(px + sz, py);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.moveTo(px, py - sz);
+          ctx.lineTo(px, py + sz);
+          ctx.stroke();
+        }
       }
       if (E.upgrades.includes('poisonTail') && i > len * 0.6) {
-        const pt = Math.sin(now / 200 + i) * 0.1 + 0.1;
+        const pt = Math.sin(now / 200 + i) * 0.1 + 0.15;
         ctx.fillStyle = `rgba(68,255,0,${pt})`;
         ctx.beginPath();
         ctx.arc(px, py, sz + 2, 0, E.PI2);
@@ -453,10 +525,13 @@ G.Snake = {
       }
       if (E.upgrades.includes('elecTail') && i > len * 0.5 && Math.random() < 0.3) {
         ctx.strokeStyle = '#ffe14d88';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1.5;
         ctx.beginPath();
+        const ex = px + (Math.random() - 0.5) * 15;
+        const ey = py + (Math.random() - 0.5) * 15;
         ctx.moveTo(px, py);
-        ctx.lineTo(px + (Math.random() - 0.5) * 12, py + (Math.random() - 0.5) * 12);
+        ctx.lineTo(ex, ey);
+        ctx.lineTo(ex + (Math.random() - 0.5) * 8, ey + (Math.random() - 0.5) * 8);
         ctx.stroke();
       }
 
