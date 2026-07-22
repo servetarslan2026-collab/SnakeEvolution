@@ -14,6 +14,14 @@ window.G = window.G || {};
     // Audio init on user interaction
     const initAudio = () => {
       G.Audio.init();
+      // Audio context'i resume et
+      if (G.Audio.ctx && G.Audio.ctx.state === 'suspended') {
+        G.Audio.ctx.resume().catch(() => {});
+      }
+      // Eğer oyun devam ediyorsa müziği başlat
+      if (G.Engine.state === 'play' && !G.Audio.musicPlaying) {
+        G.Audio.startMusic();
+      }
       document.removeEventListener('click', initAudio);
       document.removeEventListener('keydown', initAudio);
       document.removeEventListener('touchstart', initAudio);

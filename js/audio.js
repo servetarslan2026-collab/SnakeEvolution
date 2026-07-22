@@ -59,6 +59,10 @@ G.Audio = {
   // ============ MÜZİK SİSTEMİ ============
   startMusic() {
     if (!this.ctx || this.musicPlaying) return;
+    // Audio context'i resume et (browser politikası)
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume().catch(() => {});
+    }
     this.musicPlaying = true;
 
     const vol = (G.Save.data.settings.music || 0.5) * 0.08;

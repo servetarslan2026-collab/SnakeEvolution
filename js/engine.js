@@ -319,6 +319,7 @@ G.Engine = {
     this._foodBoomActive = false;
 
     this.changeState('play');
+    G.Audio.init();
     G.Audio.startMusic();
     this.notify('🎮 Başla! WASD/Ok ile hareket', this.getBiome().accent);
   },
@@ -460,6 +461,7 @@ G.Engine = {
     this.state = 'dead';
     this.deadTimer = 0;
     G.Snake.hp = 0;
+    G.Snake.alive = false;
     G.Combo.count = 0;
     G.Combo.timer = 0;
     G.Combo.multiplier = 1;

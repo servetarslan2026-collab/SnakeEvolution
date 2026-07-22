@@ -13,7 +13,7 @@ G.Food = {
     this.items = [];
     this.spawnTimer = 0;
     // Daha fazla başlangıç yemi
-    for (let i = 0; i < 10; i++) {
+    for (let i = 0; i < 12; i++) {
       this.spawn();
     }
   },
