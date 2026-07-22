@@ -9,7 +9,7 @@ G.Upgrades = {
     const rw = G.Config.RARITY_W;
     const result = [];
     const used = new Set();
-    const recentUpgrades = G.Engine.upgrades.slice(-5); // Son 5 upgrade
+    const recentUpgrades = G.Engine.upgrades.slice(-8); // Son 8 upgrade
 
     for (let i = 0; i < count; i++) {
       let best = null;
@@ -81,7 +81,7 @@ G.Upgrades = {
       case 'blastGuard': E.notify('💥 Patlama Kalkanı!', '#ff6600'); break;
       case 'foodBoom': E.notify('💣 Yem Patlaması!', '#ff6600'); break;
       case 'drone': E.notify('🤖 Mini Drone!', '#4488ff'); break;
-      case 'turbo': S.speed *= 1.5; setTimeout(() => { if (S.alive && E.state === 'play') S.speed /= 1.5; }, 3000); E.notify('🚀 Turbo! (3 sn)', '#ffaa00'); break;
+      case 'turbo': S.speed *= 1.5; G.Timers.add(() => { if (S.alive && E.state === 'play') S.speed /= 1.5; }, 3000); E.notify('🚀 Turbo! (3 sn)', '#ffaa00'); break;
       case 'clone': S.spawnClone(); break;
       case 'timeFreeze': {
         // Freeze all enemies for 5 seconds

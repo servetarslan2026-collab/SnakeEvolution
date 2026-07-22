@@ -123,8 +123,8 @@ window.G = window.G || {};
 
       // ESCAPE: pause/back
       if (c === 'Escape') {
-        if (E.state === 'play') E.state = 'paused';
-        else if (E.state === 'paused') E.state = 'play';
+        if (E.state === 'play') { E.state = 'paused'; G.Audio.stopMusic(); }
+        else if (E.state === 'paused') { E.state = 'play'; G.Audio.startMusic(); }
         else if (E.state === 'dead') E.state = 'menu';
         else if (E.state === 'levelup') { E.applyUpgrade(E.upgradeChoices[E.selectedUpgrade]); E.state = 'play'; }
         else E.state = 'menu';

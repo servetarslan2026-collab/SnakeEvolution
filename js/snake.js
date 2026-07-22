@@ -262,7 +262,7 @@ G.Snake = {
             if (e.hp <= 0) {
               e.alive = false;
               G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 10);
-              E.score += 5;
+              E.score += 15;
               E.notify('💀 Düşman öldü! +5', '#ff4444');
             }
           }

@@ -7,6 +7,7 @@ G.Food = {
   items: [],
   spawnTimer: 0,
   maxFood: 12,
+  _spawnCount: 0,
 
   init() {
     this.items = [];
@@ -42,15 +43,22 @@ G.Food = {
       }
     }
 
-    // Her 3 yemde bir nadir yem garantisi
-    if (this.items.length % 3 === 0) {
+    // Her 3 spawn'da bir nadir yem garantisi
+    this._spawnCount++;
+    if (this._spawnCount % 3 === 0) {
       const rareTypes = types.filter(t => t.w <= 5);
       if (rareTypes.length > 0 && Math.random() < 0.3) {
         type = rareTypes[G.Utils.rndInt(0, rareTypes.length - 1)];
       }
     }
 
-    const pos = G.Map.getRandomEmpty();
+    // Pozisyon çakışma kontrolü
+    let pos;
+    let tries = 0;
+    do {
+      pos = G.Map.getRandomEmpty();
+      tries++;
+    } while (tries < 20 && this.items.some(f => f.x === pos.x && f.y === pos.y));
     this.items.push({
       x: pos.x,
       y: pos.y,
@@ -70,7 +78,9 @@ G.Food = {
   update(dt) {
     // Spawn timer — daha hızlı spawn
     this.spawnTimer += dt;
-    if (this.spawnTimer >= 1.0) {
+    // Boss savaşında daha az yem spawn
+    const spawnRate = G.Boss.isActive() ? 2.0 : 1.0;
+    if (this.spawnTimer >= spawnRate) {
       this.spawnTimer = 0;
       this.spawn();
     }

@@ -17,7 +17,9 @@ G.Combo = {
   hit() {
     this.count++;
     this.timer = 3.5;
-    if (this.count >= 12) this.multiplier = 10;
+    if (this.count >= 20) this.multiplier = 20;
+    else if (this.count >= 15) this.multiplier = 15;
+    else if (this.count >= 12) this.multiplier = 10;
     else if (this.count >= 8) this.multiplier = 5;
     else if (this.count >= 5) this.multiplier = 3;
     else if (this.count >= 3) this.multiplier = 2;

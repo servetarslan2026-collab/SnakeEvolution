@@ -31,7 +31,7 @@ G.Enemies = {
       x = G.Utils.rndInt(3, (E.W / E.GS) - 4);
       y = G.Utils.rndInt(3, (E.H / E.GS) - 4);
       tries++;
-    } while ((G.Map.getTile(x, y) !== 0 || G.Utils.dist(x, y, head.x, head.y) < 10) && tries < 50);
+    } while ((G.Map.getTile(x, y) !== 0 || G.Utils.dist(x, y, head.x, head.y) < 8) && tries < 50);
     if (tries >= 50) return;
 
     // Level ile düşman hızı artsın
@@ -82,7 +82,7 @@ G.Enemies = {
           if (e.hp <= 0) {
             e.alive = false;
             G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 10);
-            E.score += 5;
+            E.score += 15;
             E.notify('☠️ Zehir ölümü! +5', '#44ff00');
           }
         }
@@ -209,7 +209,7 @@ G.Enemies = {
           E.notify('💥 Patlayan Kuyruk!', '#ff6600');
           if (e.hp <= 0) {
             e.alive = false;
-            E.score += 5;
+            E.score += 15;
           }
         }
       }
@@ -228,7 +228,7 @@ G.Enemies = {
             G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, '#ccccff', 4);
             if (e.hp <= 0) {
               e.alive = false;
-              E.score += 5;
+              E.score += 15;
               E.notify('⛓️ Zincir ölümü! +5', '#ccccff');
             }
           }
@@ -252,7 +252,7 @@ G.Enemies = {
             if (e.hp <= 0) {
               e.alive = false;
               G.Particles.burst(e.x * E.GS + E.GS / 2, e.y * E.GS + E.GS / 2, e.color, 10);
-              E.score += 5;
+              E.score += 15;
               E.notify('🤖 Drone öldürdü! +5', '#4488ff');
             }
             break; // Bir seferde bir düşmana

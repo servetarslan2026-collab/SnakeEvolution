@@ -40,6 +40,7 @@ G.Engine = {
     this.canvas.height = this.H * s | 0;
     this.canvas.style.width = this.W * s + 'px';
     this.canvas.style.height = this.H * s + 'px';
+    this.ctx.setTransform(1, 0, 0, 1, 0, 0); // Reset
     this.ctx.setTransform(s, 0, 0, s, 0, 0);
   },
 
@@ -74,6 +75,7 @@ G.Engine = {
 
     G.Particles.update(this.dt);
     G.Effects.update(this.dt);
+    if (this.state === 'play') G.Timers.update(this.dt);
     this.updateNotifications(this.dt);
 
     // Draw
@@ -301,6 +303,7 @@ G.Engine = {
     G.Combo.init();
     G.Particles.clear();
     G.Effects.reset();
+    G.Timers.clear();
     G.Stats.startSession();
     this._visitedBiomes = new Set([0]);
     this._bgParticles = [];
@@ -308,6 +311,7 @@ G.Engine = {
     this._foodBoomActive = false;
 
     this.changeState('play');
+    G.Audio.startMusic();
     this.notify('🎮 Başla! WASD/Ok ile hareket', this.getBiome().accent);
   },
 
@@ -364,7 +368,7 @@ G.Engine = {
     if (food.effect === 'slow') {
       G.Snake.speed *= 0.7;
       const slowLevel = this.level;
-      setTimeout(() => { if (G.Snake.alive && this.state === 'play') G.Snake.speed = Math.min(10, 4 + slowLevel * 0.15); }, 3000);
+      G.Timers.add(() => { if (G.Snake.alive && this.state === 'play') G.Snake.speed = Math.min(10, 4 + slowLevel * 0.15); }, 3000);
     }
     if (food.effect === 'bomb') {
       // BlastGuard: patlamadan hasar almaz
@@ -425,15 +429,15 @@ G.Engine = {
     // Combo effect
     if (G.Combo.count >= 3) G.Effects.shake(2, 0.1);
 
-    // Sound
-    G.Audio.playTone(440 + G.Combo.count * 15, 0.06);
+    // Sound (yem türüne özel)
+    G.Audio.playFoodSound(food.type);
 
     // Level up check
     if (this.xp >= this.xpNext) {
       this.xp -= this.xpNext;
       this.level++;
       this.xpNext = Math.floor(this.xpNext * 1.10);
-      G.Snake.speed = Math.min(10, 4 + this.level * 0.15);
+      G.Snake.speed = Math.min(9, 4 + this.level * 0.12);
 
       // Boss spawn every 5 levels
       if (this.level % 5 === 0 && this.level > 0) {
@@ -451,6 +455,7 @@ G.Engine = {
     G.Combo.count = 0;
     G.Combo.timer = 0;
     G.Combo.multiplier = 1;
+    G.Audio.stopMusic();
     G.Effects.shake(8, 0.4);
     G.Effects.flash('#ff0044', 0.3);
     G.Particles.burst(G.Snake.head().x * this.GS + this.GS / 2, G.Snake.head().y * this.GS + this.GS / 2, this.getBiome().accent, 10);
