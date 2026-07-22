@@ -292,7 +292,7 @@ G.NewTest = {
       this.assertEq(G.Config.MAX_SPEED, 9, 'MAX_SPEED should be 9');
     });
     t('Config: XP_MULTIPLIER tanımlı', () => {
-      this.assertEq(G.Config.XP_MULTIPLIER, 1.10, 'XP_MULTIPLIER should be 1.10');
+      this.assertEq(G.Config.XP_MULTIPLIER, 1.08, 'XP_MULTIPLIER should be 1.08');
     });
 
     // ====== 15. ERROR HANDLING ======
