@@ -86,8 +86,9 @@ G.Stats = {
       if (s.achievements.includes(ach.id)) continue;
       if (ach.check(s)) {
         s.achievements.push(ach.id);
-        G.Engine.notify('🏆 ' + ach.name + ': ' + ach.desc, '#ffaa00');
+        G.Engine.notify('🏆 ' + ach.name + ': ' + ach.desc + ' +25 Coin', '#ffaa00', 4);
         G.Audio.playTone(800, 0.15);
+        G.Save.addCoins(25);
 
         // Skin unlock check
         for (const skin of G.Config.SKINS) {

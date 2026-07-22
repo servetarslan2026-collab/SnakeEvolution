@@ -143,25 +143,33 @@ G.Map = {
           ctx.fillRect(px + 4, py + gs - 4, gs - 6, 2);
 
         } else if (t === 3) { // Lava
-          const tt = now / 500;
+          const tt = now / 300;
           // Base
           ctx.fillStyle = '#cc2200';
           ctx.fillRect(px, py, gs, gs);
-          // Animated lava
+          // Animated lava waves
           const lg = ctx.createRadialGradient(
-            px + gs / 2 + Math.sin(tt) * 3,
-            py + gs / 2 + Math.cos(tt) * 3,
+            px + gs / 2 + Math.sin(tt) * 4,
+            py + gs / 2 + Math.cos(tt * 1.3) * 4,
             0, px + gs / 2, py + gs / 2, gs / 2
           );
-          lg.addColorStop(0, '#ffaa0088');
-          lg.addColorStop(0.5, '#ff440066');
-          lg.addColorStop(1, '#cc220044');
+          lg.addColorStop(0, '#ffcc00aa');
+          lg.addColorStop(0.3, '#ff660088');
+          lg.addColorStop(0.7, '#ff330066');
+          lg.addColorStop(1, '#cc110044');
           ctx.fillStyle = lg;
           ctx.fillRect(px, py, gs, gs);
+          // Bubbles
+          if (Math.sin(tt * 2 + px) > 0.7) {
+            ctx.fillStyle = '#ffaa0088';
+            ctx.beginPath();
+            ctx.arc(px + gs/2 + Math.sin(tt)*3, py + gs/2 + Math.cos(tt)*3, 2, 0, Math.PI*2);
+            ctx.fill();
+          }
           // Glow
           if (glowOn) {
-            ctx.fillStyle = '#ff660022';
-            ctx.fillRect(px - 2, py - 2, gs + 4, gs + 4);
+            ctx.fillStyle = '#ff660033';
+            ctx.fillRect(px - 3, py - 3, gs + 6, gs + 6);
           }
 
         } else if (t === 4) { // Ice
@@ -190,23 +198,33 @@ G.Map = {
         } else if (t === 7) { // Electric
           ctx.fillStyle = '#1a1a00';
           ctx.fillRect(px, py, gs, gs);
-          // Lightning bolt
-          const et = now / 100;
-          ctx.strokeStyle = '#ffe14dcc';
-          ctx.lineWidth = 1.5;
-          ctx.beginPath();
-          ctx.moveTo(px + 2, py + gs / 2);
-          for (let i = 0; i < 5; i++) {
-            const lx = px + 2 + (i + 0.5) * ((gs - 4) / 5);
-            const ly = py + gs / 2 + Math.sin(et + i * 2.5) * 5;
-            ctx.lineTo(lx, ly);
+          // Lightning bolt (animated)
+          const et = now / 80;
+          const flash = Math.sin(et * 3) > 0.3;
+          if (flash) {
+            ctx.strokeStyle = '#ffe14ddd';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(px + 2, py + gs / 2);
+            for (let i = 0; i < 5; i++) {
+              const lx = px + 2 + (i + 0.5) * ((gs - 4) / 5);
+              const ly = py + gs / 2 + Math.sin(et + i * 2.5) * 6;
+              ctx.lineTo(lx, ly);
+            }
+            ctx.lineTo(px + gs - 2, py + gs / 2);
+            ctx.stroke();
           }
-          ctx.lineTo(px + gs - 2, py + gs / 2);
-          ctx.stroke();
+          // Electric sparks
+          if (Math.random() < 0.2) {
+            ctx.fillStyle = '#ffff0088';
+            ctx.beginPath();
+            ctx.arc(px + Math.random() * gs, py + Math.random() * gs, 1.5, 0, Math.PI*2);
+            ctx.fill();
+          }
           // Glow
-          if (glowOn) {
-            ctx.fillStyle = '#ffe14d11';
-            ctx.fillRect(px - 1, py - 1, gs + 2, gs + 2);
+          if (glowOn && flash) {
+            ctx.fillStyle = '#ffe14d22';
+            ctx.fillRect(px - 2, py - 2, gs + 4, gs + 4);
           }
         }
       }

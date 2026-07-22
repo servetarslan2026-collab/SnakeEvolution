@@ -180,8 +180,11 @@ G.Enemies = {
         }
       }
 
-      // Player collision
-      if (G.Snake.invTimer <= 0 && G.Utils.dist(G.Snake.head().x, G.Snake.head().y, e.x, e.y) < 1.5) {
+      // Player collision (cooldown: 1 sn)
+      if (!e._hitCooldown) e._hitCooldown = 0;
+      if (e._hitCooldown > 0) e._hitCooldown -= dt;
+      if (e._hitCooldown <= 0 && G.Snake.invTimer <= 0 && G.Utils.dist(G.Snake.head().x, G.Snake.head().y, e.x, e.y) < 1.5) {
+        e._hitCooldown = 1;
         // Bomber: patlama + kendini imha
         if (e.type === 'bomber') {
           G.Snake.takeDamage(1, 'bomber');

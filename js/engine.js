@@ -243,9 +243,9 @@ G.Engine = {
     ctx.fillRect(0, h - 30, w, 30);
   },
 
-  notify(text, color) {
+  notify(text, color, duration) {
     if (this.notifications.length < 4) {
-      this.notifications.push({ text, color: color || '#fff', timer: 2.5 });
+      this.notifications.push({ text, color: color || '#fff', timer: duration || 2.5 });
     }
   },
 
@@ -278,7 +278,8 @@ G.Engine = {
       if (!this._visitedBiomes) this._visitedBiomes = new Set([0]);
       this._visitedBiomes.add(newBiome);
       G.Save.data.biomesVisited = this._visitedBiomes.size;
-      this.notify('🌍 ' + G.Config.BIOMES[newBiome].name, G.Config.BIOMES[newBiome].accent);
+      this.notify('🌍 ' + G.Config.BIOMES[newBiome].name, G.Config.BIOMES[newBiome].accent, 3);
+      G.Effects.flash(G.Config.BIOMES[newBiome].accent + '44', 0.5);
     }
   },
 

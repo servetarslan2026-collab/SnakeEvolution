@@ -46,7 +46,7 @@ window.G = window.G || {};
         if (E.state === 'play') { const d = { x: 0, y: 1 }; G.Snake.dirQueue.push(d); if (G.Snake.dirQueue.length > 3) G.Snake.dirQueue.shift(); }
         if (E.state === 'menu') E.selectedBtn = (E.selectedBtn + 1) % 5;
         if (E.state === 'howtoplay') E.howToPlayPage = Math.min(2, E.howToPlayPage + 1);
-        if (E.state === 'settings') E.settingsIdx = Math.min(4, E.settingsIdx + 1);
+        if (E.state === 'settings') E.settingsIdx = Math.min(6, E.settingsIdx + 1);
         if (E.state === 'skins') E.skinScroll = Math.min(G.Config.SKINS.length - 1, E.skinScroll + 1);
       }
       if (c === 'ArrowLeft' || c === 'KeyA') {
@@ -55,9 +55,11 @@ window.G = window.G || {};
         if (E.state === 'levelup') E.selectedUpgrade = (E.selectedUpgrade - 1 + 3) % 3;
         if (E.state === 'settings') {
           if (E.settingsIdx === 0) { G.Save.data.settings.sound = Math.max(0, G.Save.data.settings.sound - 0.1); G.Save.write(); }
-          if (E.settingsIdx === 1) { G.Save.data.settings.shake = !G.Save.data.settings.shake; G.Save.write(); }
-          if (E.settingsIdx === 2) { G.Save.data.settings.particles = !G.Save.data.settings.particles; G.Save.write(); }
-          if (E.settingsIdx === 3) { G.Save.data.settings.glow = !G.Save.data.settings.glow; G.Save.write(); }
+          if (E.settingsIdx === 1) { G.Save.data.settings.music = Math.max(0, G.Save.data.settings.music - 0.1); G.Save.write(); G.Audio.setMusicVolume(G.Save.data.settings.music); }
+          if (E.settingsIdx === 2) { G.Save.data.settings.shake = !G.Save.data.settings.shake; G.Save.write(); }
+          if (E.settingsIdx === 3) { G.Save.data.settings.particles = !G.Save.data.settings.particles; G.Save.write(); }
+          if (E.settingsIdx === 4) { G.Save.data.settings.glow = !G.Save.data.settings.glow; G.Save.write(); }
+          if (E.settingsIdx === 5) { G.Save.data.settings.showFPS = !G.Save.data.settings.showFPS; G.Save.write(); }
         }
       }
       if (c === 'ArrowRight' || c === 'KeyD') {
@@ -66,9 +68,11 @@ window.G = window.G || {};
         if (E.state === 'levelup') E.selectedUpgrade = (E.selectedUpgrade + 1) % 3;
         if (E.state === 'settings') {
           if (E.settingsIdx === 0) { G.Save.data.settings.sound = Math.min(1, G.Save.data.settings.sound + 0.1); G.Save.write(); }
-          if (E.settingsIdx === 1) { G.Save.data.settings.shake = !G.Save.data.settings.shake; G.Save.write(); }
-          if (E.settingsIdx === 2) { G.Save.data.settings.particles = !G.Save.data.settings.particles; G.Save.write(); }
-          if (E.settingsIdx === 3) { G.Save.data.settings.glow = !G.Save.data.settings.glow; G.Save.write(); }
+          if (E.settingsIdx === 1) { G.Save.data.settings.music = Math.min(1, G.Save.data.settings.music + 0.1); G.Save.write(); G.Audio.setMusicVolume(G.Save.data.settings.music); }
+          if (E.settingsIdx === 2) { G.Save.data.settings.shake = !G.Save.data.settings.shake; G.Save.write(); }
+          if (E.settingsIdx === 3) { G.Save.data.settings.particles = !G.Save.data.settings.particles; G.Save.write(); }
+          if (E.settingsIdx === 4) { G.Save.data.settings.glow = !G.Save.data.settings.glow; G.Save.write(); }
+          if (E.settingsIdx === 5) { G.Save.data.settings.showFPS = !G.Save.data.settings.showFPS; G.Save.write(); }
         }
       }
 
@@ -96,7 +100,7 @@ window.G = window.G || {};
         } else if (E.state === 'howtoplay') {
           E.state = 'menu';
         } else if (E.state === 'settings') {
-          if (E.settingsIdx === 4) {
+          if (E.settingsIdx === 6) {
             // Kaydı sıfırla
             G.Save.reset();
           } else {

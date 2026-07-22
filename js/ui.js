@@ -307,10 +307,12 @@ G.UI = {
     ctx.textAlign = 'right';
     ctx.fillText(b.name.toUpperCase(), E.W - 15, 12);
 
-    // FPS
-    ctx.fillStyle = '#333';
-    ctx.font = '9px monospace';
-    ctx.fillText(E.fps + ' FPS', E.W - 15, 24);
+    // FPS (ayarlanabilir)
+    if (G.Save.data.settings.showFPS) {
+      ctx.fillStyle = '#333';
+      ctx.font = '9px monospace';
+      ctx.fillText(E.fps + ' FPS', E.W - 15, 24);
+    }
 
     // Time
     const mins = Math.floor(E.gameTime / 60);
@@ -542,9 +544,11 @@ G.UI = {
 
     const items = [
       { label: 'Ses', val: Math.round(G.Save.data.settings.sound * 100) + '%', type: 'slider' },
+      { label: 'Müzik', val: Math.round(G.Save.data.settings.music * 100) + '%', type: 'slider' },
       { label: 'Ekran Sarsıntısı', val: G.Save.data.settings.shake ? 'AÇIK' : 'KAPALI', type: 'toggle' },
       { label: 'Parçacıklar', val: G.Save.data.settings.particles ? 'AÇIK' : 'KAPALI', type: 'toggle' },
       { label: 'Parlama Efekti', val: G.Save.data.settings.glow ? 'AÇIK' : 'KAPALI', type: 'toggle' },
+      { label: 'FPS Göster', val: G.Save.data.settings.showFPS ? 'AÇIK' : 'KAPALI', type: 'toggle' },
       { label: '⚠️ Kaydı Sıfırla', val: '', type: 'action' }
     ];
 

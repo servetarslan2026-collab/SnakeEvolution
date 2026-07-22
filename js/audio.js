@@ -114,8 +114,10 @@ G.Audio = {
       clearInterval(this.musicInterval);
       this.musicInterval = null;
     }
-    if (this.musicGain) {
-      this.musicGain.gain.setValueAtTime(0, this.ctx?.currentTime || 0);
+    if (this.musicGain && this.ctx) {
+      try {
+        this.musicGain.gain.setValueAtTime(0, this.ctx.currentTime);
+      } catch(e) {}
     }
   },
 
