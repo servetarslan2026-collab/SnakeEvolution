@@ -34,9 +34,9 @@ G.Enemies = {
     } while ((G.Map.getTile(x, y) !== 0 || G.Utils.dist(x, y, head.x, head.y) < 8) && tries < 50);
     if (tries >= 50) return;
 
-    // Level ile düşman hızı ve HP artsın
-    const levelBonus = E.level * 0.05;
-    const hpBonus = Math.floor(E.level / 8);
+    // Level ile düşman hızı ve HP artsın (yılanla rekabet)
+    const levelBonus = E.level * 0.08;
+    const hpBonus = Math.floor(E.level / 6);
     this.list.push({
       x, y, rx: x, ry: y,
       type: def.type,
@@ -56,10 +56,11 @@ G.Enemies = {
     const E = G.Engine;
     if (!G.Snake.alive) return;
 
-    // Spawn timer (level ile hızlanır)
+    // Spawn timer (level ile hızlanır) + max düşman sayısı artar
     this.spawnTimer += dt;
-    const spawnInterval = Math.max(5, 12 - E.level * 0.3);
-    if (this.spawnTimer >= spawnInterval && this.list.length < 4) {
+    const spawnInterval = Math.max(4, 10 - E.level * 0.2);
+    const maxEnemies = Math.min(8, 4 + Math.floor(E.level / 5));
+    if (this.spawnTimer >= spawnInterval && this.list.length < maxEnemies) {
       this.spawnTimer = 0;
       this.spawn();
     }
@@ -120,45 +121,63 @@ G.Enemies = {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (e.ai === 'chase') {
-          if (dist < 15) {
-            // Menzil içinde: takip et
+          if (dist < 25) {
+            // Geniş menzil: takip et
             if (Math.abs(dx) > Math.abs(dy)) {
               e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
             } else {
               e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
             }
           } else {
-            // Menzil dışı: wander
+            // Menzil dışı: oyuncuya doğru yürü
             e.wanderTimer -= 1;
             if (e.wanderTimer <= 0) {
-              e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
-              e.wanderTimer = G.Utils.rndInt(3, 8);
+              // %70 oyuncuya doğru, %30 rastgele
+              if (Math.random() < 0.7) {
+                if (Math.abs(dx) > Math.abs(dy)) {
+                  e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
+                } else {
+                  e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
+                }
+              } else {
+                e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
+              }
+              e.wanderTimer = G.Utils.rndInt(2, 5);
             }
           }
         } else if (e.ai === 'bomber') {
-          // Bomber: agresif takip — her zaman oyuncuya doğru
+          // Bomber: agresif takip
           if (Math.abs(dx) > Math.abs(dy)) {
             e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
           } else {
             e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
           }
-          // %20 şansla rastgele yön (tahmin edilemez)
-          if (Math.random() < 0.2) {
+          // %10 şansla rastgele yön
+          if (Math.random() < 0.1) {
             e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
           }
         } else if (e.ai === 'wander') {
+          // Wander: oyuncuya doğru yönelme eğilimi
           e.wanderTimer -= 1;
           if (e.wanderTimer <= 0) {
-            e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
-            e.wanderTimer = G.Utils.rndInt(3, 8);
+            if (dist < 20 && Math.random() < 0.5) {
+              // %50 oyuncuya doğru
+              if (Math.abs(dx) > Math.abs(dy)) {
+                e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
+              } else {
+                e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
+              }
+            } else {
+              e.dir = [{ x: 0, y: -1 }, { x: 0, y: 1 }, { x: -1, y: 0 }, { x: 1, y: 0 }][G.Utils.rndInt(0, 3)];
+            }
+            e.wanderTimer = G.Utils.rndInt(2, 5);
           }
         } else if (e.ai === 'ghost') {
-          if (Math.random() < 0.5) {
-            if (Math.abs(dx) > Math.abs(dy)) {
-              e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
-            } else {
-              e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
-            }
+          // Ghost: her zaman takip et
+          if (Math.abs(dx) > Math.abs(dy)) {
+            e.dir = { x: dx > 0 ? 1 : -1, y: 0 };
+          } else {
+            e.dir = { x: 0, y: dy > 0 ? 1 : -1 };
           }
         } else if (e.ai === 'turret') {
           // Turret: don't move, but check if player is in line of sight (duvar kontrolü)
@@ -177,7 +196,8 @@ G.Enemies = {
             if (!blocked) {
               if (!e.shootTimer) e.shootTimer = 0;
               e.shootTimer += dt;
-              if (e.shootTimer >= 3) {
+              const shootInterval = Math.max(1.5, 3 - E.level * 0.05);
+              if (e.shootTimer >= shootInterval) {
                 e.shootTimer = 0;
                 if (G.Snake.invTimer <= 0) {
                   G.Snake.takeDamage(1, 'turret');
@@ -315,7 +335,7 @@ G.Enemies = {
       if (!e.alive) continue;
       const cx = e.rx * gs + gs / 2;
       const cy = e.ry * gs + gs / 2;
-      const sz = gs / 2 - 1;
+      const sz = gs / 2 + 1; // Daha büyük düşmanlar
       const t = e.anim;
 
       ctx.save();

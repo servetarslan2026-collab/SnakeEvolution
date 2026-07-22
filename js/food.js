@@ -6,7 +6,7 @@ window.G = window.G || {};
 G.Food = {
   items: [],
   spawnTimer: 0,
-  maxFood: 12,
+  get maxFood() { return Math.min(20, 12 + Math.floor((G.Engine?.level || 1) / 5)); },
   _spawnCount: 0,
   _collecting: false, // Double-collection guard
 
@@ -80,9 +80,10 @@ G.Food = {
   update(dt) {
     if (this._collecting) return; // Toplama sırasında güncelleme yapma
 
-    // Spawn timer
+    // Spawn timer (yılan hızlandıkça daha hızlı spawn)
     this.spawnTimer += dt;
-    const spawnRate = G.Boss.isActive() ? 2.0 : 1.0;
+    const speedFactor = Math.max(0.5, 1.0 - (G.Snake.speed - 4) * 0.05);
+    const spawnRate = G.Boss.isActive() ? 2.0 : speedFactor;
     if (this.spawnTimer >= spawnRate) {
       this.spawnTimer = 0;
       this.spawn();
